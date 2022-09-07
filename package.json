@@ -1,0 +1,30 @@
+{
+    "name": "heroes-of-holdem",
+    "version": "1.0.0",
+    "scripts": {
+        "start": "parcel serve index.html",
+        "test": "npx hardhat test"
+    },
+    "author": "legacy-suite",
+    "devDependencies": {
+        "@nomiclabs/hardhat-ethers": "^2.0.2",
+        "@nomiclabs/hardhat-waffle": "^2.0.1",
+        "@openzeppelin/contracts": "^4.3.2",
+        "@truffle/hdwallet-provider": "^1.5.1",
+        "@types/node": "14.14.35",
+        "chai": "^4.3.4",
+        "dotenv": "^10.0.0",
+        "ethereum-waffle": "^3.4.0",
+        "ethers": "^5.4.7",
+        "hardhat": "^2.10.1",
+        "openzeppelin-contracts": "^4.0.0",
+        "truffle-hdwallet-provider": "^1.0.17",
+        "typescript": "4.2.3",
+        "web3": "^1.5.3"
+    },
+    "dependencies": {
+        "@openzeppelin/contracts-upgradeable": "^4.4.1",
+        "@openzeppelin/hardhat-upgrades": "^1.12.0",
+        "config": "^3.3.6"
+    }
+}
