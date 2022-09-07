@@ -50,6 +50,20 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         uint256 remainingAmount
     );
 
+    event ERC721AssetClaimed(
+        address owner,
+        address claimer,
+        address _contract,
+        uint256 tokenId
+    );
+
+    event ERC20AssetClaimed(
+        address owner,
+        address claimer,
+        address _contract,
+        uint256 amount
+    );
+
     struct ERC20Benificiary {
         address account;
         uint256 allowedAmount;
@@ -361,6 +375,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
             _msgSender(),
             tokenId
         );
+        emit ERC721AssetClaimed(owner, _msgSender(), _contract, tokenId);
     }
 
     function claimERC20Asset(
@@ -376,8 +391,11 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
                 break;
             }
         }
+        uint256 allowedAmount = erc20Asset
+            .beneficiaries[beneficiaryIndex]
+            .allowedAmount;
         require(
-            erc20Asset.beneficiaries[beneficiaryIndex].allowedAmount > 0,
+            allowedAmount > 0,
             "LegacyAssetManager: Caller has no allowed maount"
         );
         address vaultAddress = vaultFactory.deployedContractFromMember(
@@ -387,7 +405,8 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
             _contract,
             owner,
             _msgSender(),
-            erc20Asset.beneficiaries[beneficiaryIndex].allowedAmount
+            allowedAmount
         );
+        emit ERC20AssetClaimed(owner, _msgSender(), _contract, allowedAmount);
     }
 }
