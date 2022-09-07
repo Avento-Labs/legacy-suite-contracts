@@ -16,11 +16,11 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
 
     bytes32 constant LEGACY_ADMIN = keccak256("LEGACY_ADMIN");
 
-    ILegacyVaultFactory public proxyFactory;
+    ILegacyVaultFactory public vaultFactory;
 
     mapping(address => UserAssets) public userAssets;
-    mapping(address => ERC721Asset) public erc721beneficiaries;
-    mapping(address => ERC20Asset) public erc20Beneficiaries;
+    mapping(address => ERC721Asset[]) public erc721beneficiaries;
+    mapping(address => ERC20Asset[]) public erc20Beneficiaries;
     mapping(address => mapping(uint256 => bool)) public isAlreadyAdded;
 
     event ERC21AssetAdded(
@@ -339,8 +339,55 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     // TODO: addbeneficiary & removeBeneficary
     // Blocker: Need to discuss the business logic on this
 
-    // TODO: Add the voucher logic for asset claim feature for beneficiaries
-    function claimAsset() public {
-        throw("Not implemented yet");
+    function claimERC721Asset(
+        address owner,
+        address _contract,
+        uint256 tokenId,
+        bytes memory signature
+    ) public {
+        ERC721Asset memory erc721Asset = getERC721Asset(
+            owner,
+            _contract,
+            tokenId
+        );
+        require(
+            erc721Asset.beneficiary == _msgSender(),
+            "LegacyAssetManager: Unauthorized claim call"
+        );
+        address vaultAddress = vaultFactory.deployedContractFromMember(owner);
+        ILegacyVault(vaultAddress).transferErc721TokensAllowed(
+            _contract,
+            erc721Asset.owner,
+            _msgSender(),
+            tokenId
+        );
+    }
+
+    function claimERC20Asset(
+        address owner,
+        address _contract,
+        bytes memory signature
+    ) public {
+        ERC20Asset memory erc20Asset = getERC20Asset(owner, _contract);
+        uint256 beneficiaryIndex;
+        for (uint i = 0; i < erc20Asset.beneficiaries.length; i++) {
+            if (erc20Asset.beneficiaries[i].account == _msgSender()) {
+                beneficiaryIndex = i;
+                break;
+            }
+        }
+        require(
+            erc20Asset.beneficiaries[beneficiaryIndex].allowedAmount > 0,
+            "LegacyAssetManager: Caller has no allowed maount"
+        );
+        address vaultAddress = vaultFactory.deployedContractFromMember(
+            _msgSender()
+        );
+        ILegacyVault(vaultAddress).transferErc20TokensAllowed(
+            _contract,
+            owner,
+            _msgSender(),
+            erc20Asset.beneficiaries[beneficiaryIndex].allowedAmount
+        );
     }
 }
