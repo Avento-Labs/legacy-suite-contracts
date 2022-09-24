@@ -25,7 +25,7 @@ contract LegacyVault is ILegacyVault, AccessControl, Pausable {
         address _recipientAddress,
         uint256 _amount
     ) external override whenNotPaused onlyRole(ADMIN_ROLE) {
-        IERC20(_contractAddress).safeTransferFrom(
+        IERC20(_contractAddress).transferFrom(
             _ownerAddress,
             _recipientAddress,
             _amount
