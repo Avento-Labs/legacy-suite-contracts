@@ -435,10 +435,15 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     function claimERC721Asset(
         address owner,
         address _contract,
-        uint256 tokenId // bytes32 hashedMessage, // bytes memory signature
+        uint256 tokenId,
+        bytes32 hashedMessage,
+        bytes memory signature
     ) public {
-        // address signer = _verifySignature(hashedMessage, signature);
-        // require(hasRole(LEGACY_ADMIN, signer));
+        address signer = _verifySignature(hashedMessage, signature);
+        require(
+            hasRole(LEGACY_ADMIN, signer),
+            "LegacyAssetManager: Unauthorized signature"
+        );
         ERC721Asset memory erc721Asset = getERC721Asset(
             owner,
             _contract,
@@ -476,13 +481,17 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         emit ERC721AssetClaimed(owner, _msgSender(), _contract, tokenId);
     }
 
-    function claimERC20Asset(address owner, address _contract)
-        public
-    // bytes32 hashedMessage,
-    // bytes memory signature
-    {
-        // address signer = _verifySignature(hashedMessage, signature);
-        // require(hasRole(LEGACY_ADMIN, signer));
+    function claimERC20Asset(
+        address owner,
+        address _contract,
+        bytes32 hashedMessage,
+        bytes memory signature
+    ) public {
+        address signer = _verifySignature(hashedMessage, signature);
+        require(
+            hasRole(LEGACY_ADMIN, signer),
+            "LegacyAssetManager: Unauthorized signature"
+        );
         uint256 assetIndex = _findERC20AssetIndex(owner, _contract);
         ERC20Asset memory erc20Asset = getERC20Asset(owner, _contract);
         uint256 beneficiaryIndex;

@@ -102,8 +102,8 @@ async function deploy() {
     };
 }
 
-describe("LegacyAssetManager: addERC721Single", async function () {
-    context("add erc721 asset", async function () {
+describe("LegacyAssetManager", async function () {
+    context("addERC721Single", async function () {
         it("Should add single ERC721 asset", async function () {
             const { owner, ownerAssetManager, ERC721, beneficiary } =
                 await deploy();
@@ -124,8 +124,6 @@ describe("LegacyAssetManager: addERC721Single", async function () {
                     beneficiary.address
                 );
         });
-    });
-    context("add erc721 asset two times", async function () {
         it("Should fail to add single ERC721 asset more than once", async function () {
             const { owner, ownerAssetManager, ERC721, beneficiary } =
                 await deploy();
@@ -143,8 +141,6 @@ describe("LegacyAssetManager: addERC721Single", async function () {
                 )
             ).to.revertedWith("LegacyAssetManager: Asset already added");
         });
-    });
-    context("add erc721 asset from non owner", async function () {
         it("Should fail to add single ERC721 asset more than once", async function () {
             const { owner, ownerAssetManager, ERC721, beneficiary } =
                 await deploy();
@@ -161,8 +157,6 @@ describe("LegacyAssetManager: addERC721Single", async function () {
                 "LegacyAssetManager: Caller is not the token owner"
             );
         });
-    });
-    context("add erc721 asset not approved", async function () {
         it("Should fail to add single ERC721 that is not approved", async function () {
             const { owner, ownerAssetManager, ERC721, beneficiary } =
                 await deploy();
@@ -178,12 +172,11 @@ describe("LegacyAssetManager: addERC721Single", async function () {
             ).to.revertedWith("LegacyAssetManager: Asset not approved");
         });
     });
-});
 
-describe("LegacyAssetManager: claimERC721Single", async () => {
-    context("Claim single Asset", async function () {
+    context("claimERC721Asset", async function () {
         it("Should claim single ERC721 Asset", async function () {
             const {
+                admin,
                 owner,
                 ERC721,
                 beneficiary,
@@ -197,12 +190,22 @@ describe("LegacyAssetManager: claimERC721Single", async () => {
                 beneficiary.address
             );
 
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await admin.signMessage(hashedMessage);
+
             // check if event is emitted
             await expect(
                 beneficiaryAssetManager.claimERC721Asset(
                     owner.address,
                     ERC721.address,
-                    1
+                    1,
+                    hashedMessage,
+                    signature
                 )
             )
                 .to.emit(beneficiaryAssetManager, "ERC721AssetClaimed") // transfer from minter to redeemer
@@ -214,10 +217,9 @@ describe("LegacyAssetManager: claimERC721Single", async () => {
                 );
             expect(await ERC721.ownerOf(1)).to.be.equals(beneficiary.address);
         });
-    });
-    context("Claim single Asset twice", async function () {
         it("Should fail to claim single ERC721 Asset twice", async function () {
             const {
+                admin,
                 owner,
                 ERC721,
                 beneficiary,
@@ -231,25 +233,36 @@ describe("LegacyAssetManager: claimERC721Single", async () => {
                 beneficiary.address
             );
 
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await admin.signMessage(hashedMessage);
+
             await beneficiaryAssetManager.claimERC721Asset(
                 owner.address,
                 ERC721.address,
-                1
+                1,
+                hashedMessage,
+                signature
             );
             await expect(
                 beneficiaryAssetManager.claimERC721Asset(
                     owner.address,
                     ERC721.address,
-                    1
+                    1,
+                    hashedMessage,
+                    signature
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: Beneficiary has already claimed the asset"
             );
         });
-    });
-    context("When caller is not the beneficiary", async function () {
         it("Should fail to claim single ERC721 by non beneficiary", async function () {
             const {
+                admin,
                 owner,
                 ERC721,
                 beneficiary,
@@ -263,18 +276,28 @@ describe("LegacyAssetManager: claimERC721Single", async () => {
                 1,
                 beneficiary1.address
             );
+
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await admin.signMessage(hashedMessage);
+
             await expect(
                 beneficiaryAssetManager.claimERC721Asset(
                     owner.address,
                     ERC721.address,
-                    1
+                    1,
+                    hashedMessage,
+                    signature
                 )
             ).to.be.revertedWith("LegacyAssetManager: Unauthorized claim call");
         });
-    });
-    context("When the asset has been transferred", async function () {
         it("Should fail to claim single ERC721 when the owner has been changed", async function () {
             const {
+                admin,
                 owner,
                 ownerERC721,
                 ERC721,
@@ -294,21 +317,30 @@ describe("LegacyAssetManager: claimERC721Single", async () => {
                 beneficiary1.address,
                 1
             );
+
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await admin.signMessage(hashedMessage);
+
             await expect(
                 beneficiaryAssetManager.claimERC721Asset(
                     owner.address,
                     ERC721.address,
-                    1
+                    1,
+                    hashedMessage,
+                    signature
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: The asset does not belong to the owner now"
             );
         });
     });
-});
 
-describe("LegacyAssetManager: addERC20Single", async () => {
-    context("Add single ERC20 asset", async () => {
+    context("addERC20Single", async () => {
         it("Should add single ERC20 asset", async () => {
             const {
                 owner,
@@ -348,8 +380,6 @@ describe("LegacyAssetManager: addERC20Single", async () => {
                     percentages
                 );
         });
-    });
-    context("When asset amount exceeds balance", async () => {
         it("Should fail to add single ERC20 asset when asset amount exceeds balance", async () => {
             const {
                 owner,
@@ -379,8 +409,6 @@ describe("LegacyAssetManager: addERC20Single", async () => {
                 "LegacyAssetManager: Asset amount exceeds balance"
             );
         });
-    });
-    context("When allowance is insufficient", async () => {
         it("Should fail to add single ERC20 asset when the allowance is insufficient", async () => {
             const {
                 owner,
@@ -414,8 +442,6 @@ describe("LegacyAssetManager: addERC20Single", async () => {
                 "LegacyAssetManager: Asset allowance is insufficient"
             );
         });
-    });
-    context("When beneficiary percentages exceed 100", async () => {
         it("Should fail to add single ERC20 asset when percentages exceed 100", async () => {
             const {
                 owner,
@@ -450,12 +476,11 @@ describe("LegacyAssetManager: addERC20Single", async () => {
             );
         });
     });
-});
 
-describe("LegacyAssetManager: claimERC20", async () => {
-    context("add single ERC20 asset", async () => {
+    context("claimERC20Single", async () => {
         it("Should claim single ERC20 asset", async () => {
             const {
+                admin,
                 owner,
                 beneficiary,
                 ownerAssetManager,
@@ -484,10 +509,19 @@ describe("LegacyAssetManager: claimERC20", async () => {
                 beneficiaries,
                 percentages
             );
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await admin.signMessage(hashedMessage);
             await expect(
                 beneficiaryAssetManager.claimERC20Asset(
                     owner.address,
-                    ERC20.address
+                    ERC20.address,
+                    hashedMessage,
+                    signature
                 )
             )
                 .to.emit(beneficiaryAssetManager, "ERC20AssetClaimed")
@@ -498,10 +532,9 @@ describe("LegacyAssetManager: claimERC20", async () => {
                     ethers.utils.parseEther("33")
                 );
         });
-    });
-    context("Claiming twice", async () => {
         it("Should fail to claim single ERC20 asset twice", async () => {
             const {
+                admin,
                 owner,
                 beneficiary,
                 ownerAssetManager,
@@ -530,23 +563,33 @@ describe("LegacyAssetManager: claimERC20", async () => {
                 beneficiaries,
                 percentages
             );
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await admin.signMessage(hashedMessage);
             await beneficiaryAssetManager.claimERC20Asset(
                 owner.address,
-                ERC20.address
+                ERC20.address,
+                hashedMessage,
+                signature
             );
             await expect(
                 beneficiaryAssetManager.claimERC20Asset(
                     owner.address,
-                    ERC20.address
+                    ERC20.address,
+                    hashedMessage,
+                    signature
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: Beneficiary has already claimed the asset"
             );
         });
-    });
-    context("When caller is not a beneficiary", async () => {
         it("Should fail to claim single ERC20 asset by non beneficiary", async () => {
             const {
+                admin,
                 owner,
                 beneficiary,
                 ownerAssetManager,
@@ -575,17 +618,25 @@ describe("LegacyAssetManager: claimERC20", async () => {
                 beneficiaries,
                 percentages
             );
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await admin.signMessage(hashedMessage);
             await expect(
                 beneficiaryAssetManager.claimERC20Asset(
                     owner.address,
-                    ERC20.address
+                    ERC20.address,
+                    hashedMessage,
+                    signature
                 )
             ).to.be.revertedWith("LegacyAssetManager: Beneficiary not found");
         });
-    });
-    context("When owner has zero balance", async () => {
         it("Should fail to claim single ERC20 asset by non beneficiary", async () => {
             const {
+                admin,
                 owner,
                 beneficiary,
                 ownerAssetManager,
@@ -614,6 +665,13 @@ describe("LegacyAssetManager: claimERC20", async () => {
                 beneficiaries,
                 percentages
             );
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await admin.signMessage(hashedMessage);
             await ownerERC20.transfer(
                 beneficiary3.address,
                 await ownerERC20.balanceOf(owner.address)
@@ -621,7 +679,9 @@ describe("LegacyAssetManager: claimERC20", async () => {
             await expect(
                 beneficiaryAssetManager.claimERC20Asset(
                     owner.address,
-                    ERC20.address
+                    ERC20.address,
+                    hashedMessage,
+                    signature
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: Owner has zero balance for this asset"
@@ -629,6 +689,3 @@ describe("LegacyAssetManager: claimERC20", async () => {
         });
     });
 });
-
-// TODO: Add signature generation and verification
-// TODO: Add all beneficiaries claim
