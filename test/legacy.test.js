@@ -5,6 +5,7 @@ const { ethers } = require("hardhat");
 async function deploy() {
     const [
         admin,
+        authorizer,
         owner,
         beneficiary,
         beneficiary1,
@@ -12,6 +13,7 @@ async function deploy() {
         beneficiary3,
         beneficiary4,
         beneficiary5,
+        backupWallet,
         _,
     ] = await ethers.getSigners();
 
@@ -42,6 +44,10 @@ async function deploy() {
     );
 
     await LegacyAssetManager.deployed();
+    await LegacyAssetManager.grantRole(
+        LegacyAssetManager.ASSET_AUTHORIZER(),
+        authorizer.address
+    );
     await LegacyVaultFactory.grantRole(
         await LegacyVaultFactory.ADMIN_ROLE(),
         LegacyAssetManager.address
@@ -57,6 +63,9 @@ async function deploy() {
     const ownerAssetManager = LegacyAssetManagerFactory.connect(owner).attach(
         LegacyAssetManager.address
     );
+    const backupWalletAssetManager = LegacyAssetManagerFactory.connect(
+        backupWallet
+    ).attach(LegacyAssetManager.address);
     const beneficiaryAssetManager = LegacyAssetManagerFactory.connect(
         beneficiary
     ).attach(LegacyAssetManager.address);
@@ -82,15 +91,17 @@ async function deploy() {
     }
 
     return {
+        admin,
+        authorizer,
+        owner,
         LegacyAssetManager,
         LegacyVaultFactory,
         ownerAssetManager,
+        backupWalletAssetManager,
         ownerVault,
         beneficiaryAssetManager,
         ERC721,
         ERC20,
-        admin,
-        owner,
         ownerERC721,
         ownerERC20,
         beneficiary,
@@ -99,117 +110,198 @@ async function deploy() {
         beneficiary3,
         beneficiary4,
         beneficiary5,
+        backupWallet,
     };
 }
 
 describe("LegacyAssetManager", async function () {
-    context("addERC721Single", async function () {
+    context("Add ERC721 Asset - Single", async function () {
         it("Should add single ERC721 asset", async function () {
-            const { owner, ownerAssetManager, ERC721, beneficiary } =
-                await deploy();
-
-            // check if event is emitted
-            await expect(
-                ownerAssetManager.addERC721Single(
-                    ERC721.address,
-                    1,
-                    beneficiary.address
-                )
-            )
-                .to.emit(ownerAssetManager, "ERC21AssetAdded") // transfer from minter to redeemer
-                .withArgs(
-                    owner.address,
-                    ERC721.address,
-                    1,
-                    beneficiary.address
-                );
-        });
-        it("Should fail to add single ERC721 asset more than once", async function () {
-            const { owner, ownerAssetManager, ERC721, beneficiary } =
-                await deploy();
-            await ownerAssetManager.addERC721Single(
-                ERC721.address,
-                1,
-                beneficiary.address
-            );
-            // check if event is emitted
-            await expect(
-                ownerAssetManager.addERC721Single(
-                    ERC721.address,
-                    1,
-                    beneficiary.address
-                )
-            ).to.revertedWith("LegacyAssetManager: Asset already added");
-        });
-        it("Should fail to add single ERC721 asset more than once", async function () {
-            const { owner, ownerAssetManager, ERC721, beneficiary } =
-                await deploy();
-
-            await ERC721.mint(beneficiary.address, 11);
-            // check if event is emitted
-            await expect(
-                ownerAssetManager.addERC721Single(
-                    ERC721.address,
-                    11,
-                    beneficiary.address
-                )
-            ).to.revertedWith(
-                "LegacyAssetManager: Caller is not the token owner"
-            );
-        });
-        it("Should fail to add single ERC721 that is not approved", async function () {
-            const { owner, ownerAssetManager, ERC721, beneficiary } =
-                await deploy();
-
-            await ERC721.mint(owner.address, 11);
-            // check if event is emitted
-            await expect(
-                ownerAssetManager.addERC721Single(
-                    ERC721.address,
-                    11,
-                    beneficiary.address
-                )
-            ).to.revertedWith("LegacyAssetManager: Asset not approved");
-        });
-    });
-
-    context("claimERC721Asset", async function () {
-        it("Should claim single ERC721 Asset", async function () {
             const {
                 admin,
+                authorizer,
                 owner,
+                ownerAssetManager,
                 ERC721,
                 beneficiary,
-                ownerAssetManager,
-                beneficiaryAssetManager,
             } = await deploy();
-
-            await ownerAssetManager.addERC721Single(
-                ERC721.address,
-                1,
-                beneficiary.address
-            );
-
+            const userTag = ethers.utils.hashMessage(owner.address);
             const message = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
             const hashedMessage = ethers.utils.arrayify(
                 ethers.utils.hashMessage(message)
             );
-            const signature = await admin.signMessage(hashedMessage);
-
-            // check if event is emitted
+            const signature = await authorizer.signMessage(hashedMessage);
             await expect(
-                beneficiaryAssetManager.claimERC721Asset(
-                    owner.address,
-                    ERC721.address,
-                    1,
+                ownerAssetManager.addERC721Assets(
+                    userTag,
+                    [ERC721.address],
+                    [1],
+                    [beneficiary.address],
                     hashedMessage,
                     signature
                 )
             )
+                .to.emit(ownerAssetManager, "ERC21AssetAdded")
+                .withArgs(
+                    userTag,
+                    owner.address,
+                    ERC721.address,
+                    1,
+                    beneficiary.address
+                );
+        });
+        it("Should fail to add single ERC721 asset twice", async function () {
+            const {
+                admin,
+                authorizer,
+                owner,
+                ownerAssetManager,
+                ERC721,
+                beneficiary,
+            } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await authorizer.signMessage(hashedMessage);
+            await ownerAssetManager.addERC721Assets(
+                userTag,
+                [ERC721.address],
+                [1],
+                [beneficiary.address],
+                hashedMessage,
+                signature
+            );
+            // check if event is emitted
+            await expect(
+                ownerAssetManager.addERC721Assets(
+                    userTag,
+                    [ERC721.address],
+                    [1],
+                    [beneficiary.address],
+                    hashedMessage,
+                    signature
+                )
+            ).to.revertedWith("LegacyAssetManager: Asset already added");
+        });
+        it("Should fail to add single ERC721 asset more than once", async function () {
+            const {
+                admin,
+                authorizer,
+                owner,
+                ownerAssetManager,
+                ERC721,
+                beneficiary,
+            } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await authorizer.signMessage(hashedMessage);
+            await ERC721.mint(beneficiary.address, 11);
+            // check if event is emitted
+            await expect(
+                ownerAssetManager.addERC721Assets(
+                    userTag,
+                    [ERC721.address],
+                    [11],
+                    [beneficiary.address],
+                    hashedMessage,
+                    signature
+                )
+            ).to.revertedWith(
+                "LegacyAssetManager: Caller is not the token owner"
+            );
+        });
+        it("Should fail to add single ERC721 that is not approved", async function () {
+            const {
+                admin,
+                authorizer,
+                owner,
+                ownerAssetManager,
+                ERC721,
+                beneficiary,
+            } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await authorizer.signMessage(hashedMessage);
+            await ERC721.mint(owner.address, 11);
+            // check if event is emitted
+            await expect(
+                ownerAssetManager.addERC721Assets(
+                    userTag,
+                    [ERC721.address],
+                    [11],
+                    [beneficiary.address],
+                    hashedMessage,
+                    signature
+                )
+            ).to.revertedWith("LegacyAssetManager: Asset not approved");
+        });
+    });
+
+    context("Claim ERC721 Asset - Single", async function () {
+        it("Should claim single ERC721 Asset", async function () {
+            const {
+                admin,
+                authorizer,
+                owner,
+                ERC721,
+                beneficiary,
+                ownerAssetManager,
+                beneficiaryAssetManager,
+            } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
+            const addMessage = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const addHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(addMessage)
+            );
+            const addSignature = await authorizer.signMessage(addHashedMessage);
+            await ownerAssetManager.addERC721Assets(
+                userTag,
+                [ERC721.address],
+                [1],
+                [beneficiary.address],
+                addHashedMessage,
+                addSignature
+            );
+
+            const claimMessage = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const claimHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(claimMessage)
+            );
+            const claimSignature = await admin.signMessage(claimHashedMessage);
+            // check if event is emitted
+            await expect(
+                beneficiaryAssetManager.claimERC721Asset(
+                    userTag,
+                    owner.address,
+                    ERC721.address,
+                    1,
+                    claimHashedMessage,
+                    claimSignature
+                )
+            )
                 .to.emit(beneficiaryAssetManager, "ERC721AssetClaimed") // transfer from minter to redeemer
                 .withArgs(
+                    userTag,
                     owner.address,
                     beneficiary.address,
                     ERC721.address,
@@ -220,41 +312,54 @@ describe("LegacyAssetManager", async function () {
         it("Should fail to claim single ERC721 Asset twice", async function () {
             const {
                 admin,
+                authorizer,
                 owner,
                 ERC721,
                 beneficiary,
                 ownerAssetManager,
                 beneficiaryAssetManager,
             } = await deploy();
-
-            await ownerAssetManager.addERC721Single(
-                ERC721.address,
-                1,
-                beneficiary.address
-            );
-
-            const message = ethers.BigNumber.from(
+            const userTag = ethers.utils.hashMessage(owner.address);
+            const addMessage = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+            const addHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(addMessage)
             );
-            const signature = await admin.signMessage(hashedMessage);
+            const addSignature = await authorizer.signMessage(addHashedMessage);
+            await ownerAssetManager.addERC721Assets(
+                userTag,
+                [ERC721.address],
+                [1],
+                [beneficiary.address],
+                addHashedMessage,
+                addSignature
+            );
+
+            const claimMessage = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const claimHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(claimMessage)
+            );
+            const claimSignature = await admin.signMessage(claimHashedMessage);
 
             await beneficiaryAssetManager.claimERC721Asset(
+                userTag,
                 owner.address,
                 ERC721.address,
                 1,
-                hashedMessage,
-                signature
+                claimHashedMessage,
+                claimSignature
             );
             await expect(
                 beneficiaryAssetManager.claimERC721Asset(
+                    userTag,
                     owner.address,
                     ERC721.address,
                     1,
-                    hashedMessage,
-                    signature
+                    claimHashedMessage,
+                    claimSignature
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: Beneficiary has already claimed the asset"
@@ -263,6 +368,7 @@ describe("LegacyAssetManager", async function () {
         it("Should fail to claim single ERC721 by non beneficiary", async function () {
             const {
                 admin,
+                authorizer,
                 owner,
                 ERC721,
                 beneficiary,
@@ -270,34 +376,46 @@ describe("LegacyAssetManager", async function () {
                 beneficiaryAssetManager,
                 beneficiary1,
             } = await deploy();
-
-            await ownerAssetManager.addERC721Single(
-                ERC721.address,
-                1,
-                beneficiary1.address
-            );
-
-            const message = ethers.BigNumber.from(
+            const userTag = ethers.utils.hashMessage(owner.address);
+            const addMessage = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+            const addHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(addMessage)
             );
-            const signature = await admin.signMessage(hashedMessage);
+            const addSignature = await authorizer.signMessage(addHashedMessage);
+            await ownerAssetManager.addERC721Assets(
+                userTag,
+                [ERC721.address],
+                [1],
+                [beneficiary1.address],
+                addHashedMessage,
+                addSignature
+            );
+
+            const claimMessage = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const claimHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(claimMessage)
+            );
+            const claimSignature = await admin.signMessage(claimHashedMessage);
 
             await expect(
                 beneficiaryAssetManager.claimERC721Asset(
+                    userTag,
                     owner.address,
                     ERC721.address,
                     1,
-                    hashedMessage,
-                    signature
+                    claimHashedMessage,
+                    claimSignature
                 )
             ).to.be.revertedWith("LegacyAssetManager: Unauthorized claim call");
         });
         it("Should fail to claim single ERC721 when the owner has been changed", async function () {
             const {
                 admin,
+                authorizer,
                 owner,
                 ownerERC721,
                 ERC721,
@@ -306,33 +424,44 @@ describe("LegacyAssetManager", async function () {
                 beneficiaryAssetManager,
                 beneficiary1,
             } = await deploy();
-
-            await ownerAssetManager.addERC721Single(
-                ERC721.address,
-                1,
-                beneficiary.address
+            const userTag = ethers.utils.hashMessage(owner.address);
+            const addMessage = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const addHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(addMessage)
             );
+            const addSignature = await authorizer.signMessage(addHashedMessage);
+            await ownerAssetManager.addERC721Assets(
+                userTag,
+                [ERC721.address],
+                [1],
+                [beneficiary.address],
+                addHashedMessage,
+                addSignature
+            );
+
+            const claimMessage = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const claimHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(claimMessage)
+            );
+            const claimSignature = await admin.signMessage(claimHashedMessage);
             await ownerERC721.transferFrom(
                 owner.address,
                 beneficiary1.address,
                 1
             );
 
-            const message = ethers.BigNumber.from(
-                ethers.utils.randomBytes(4)
-            ).toString();
-            const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
-            );
-            const signature = await admin.signMessage(hashedMessage);
-
             await expect(
                 beneficiaryAssetManager.claimERC721Asset(
+                    userTag,
                     owner.address,
                     ERC721.address,
                     1,
-                    hashedMessage,
-                    signature
+                    claimHashedMessage,
+                    claimSignature
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: The asset does not belong to the owner now"
@@ -340,9 +469,11 @@ describe("LegacyAssetManager", async function () {
         });
     });
 
-    context("addERC20Single", async () => {
+    context("Add ERC20 Asset - Single", async () => {
         it("Should add single ERC20 asset", async () => {
             const {
+                admin,
+                authorizer,
                 owner,
                 beneficiary,
                 ownerAssetManager,
@@ -352,6 +483,7 @@ describe("LegacyAssetManager", async function () {
                 beneficiary1,
                 beneficiary2,
             } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
             const amount = ethers.utils.parseEther("100");
             await ownerERC20.approve(
                 ownerVault.address,
@@ -363,25 +495,39 @@ describe("LegacyAssetManager", async function () {
                 beneficiary2.address,
             ];
             const percentages = [33, 33, 34];
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await authorizer.signMessage(hashedMessage);
             await expect(
-                ownerAssetManager.addERC20Single(
-                    ERC20.address,
-                    amount,
-                    beneficiaries,
-                    percentages
+                ownerAssetManager.addERC20Assets(
+                    userTag,
+                    [ERC20.address],
+                    [amount],
+                    [beneficiaries],
+                    [percentages],
+                    hashedMessage,
+                    signature
                 )
             )
                 .to.emit(ownerAssetManager, "ERC20AssetAdded")
                 .withArgs(
+                    userTag,
                     owner.address,
                     ERC20.address,
                     amount,
                     beneficiaries,
-                    percentages
+                    percentages,
+                    100
                 );
         });
         it("Should fail to add single ERC20 asset when asset amount exceeds balance", async () => {
             const {
+                admin,
+                authorizer,
                 owner,
                 beneficiary,
                 ownerAssetManager,
@@ -389,6 +535,7 @@ describe("LegacyAssetManager", async function () {
                 beneficiary1,
                 beneficiary2,
             } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
             const amount = ethers.utils.parseEther(
                 (await ERC20.balanceOf(owner.address)) + 100
             );
@@ -398,12 +545,22 @@ describe("LegacyAssetManager", async function () {
                 beneficiary2.address,
             ];
             const percentages = [33, 33, 34];
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await authorizer.signMessage(hashedMessage);
             await expect(
-                ownerAssetManager.addERC20Single(
-                    ERC20.address,
-                    amount,
-                    beneficiaries,
-                    percentages
+                ownerAssetManager.addERC20Assets(
+                    userTag,
+                    [ERC20.address],
+                    [amount],
+                    [beneficiaries],
+                    [percentages],
+                    hashedMessage,
+                    signature
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: Asset amount exceeds balance"
@@ -411,6 +568,8 @@ describe("LegacyAssetManager", async function () {
         });
         it("Should fail to add single ERC20 asset when the allowance is insufficient", async () => {
             const {
+                admin,
+                authorizer,
                 owner,
                 beneficiary,
                 ownerAssetManager,
@@ -420,6 +579,7 @@ describe("LegacyAssetManager", async function () {
                 beneficiary1,
                 beneficiary2,
             } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
             const amount = ethers.utils.parseEther("101");
             await ownerERC20.approve(
                 ownerVault.address,
@@ -431,12 +591,22 @@ describe("LegacyAssetManager", async function () {
                 beneficiary2.address,
             ];
             const percentages = [33, 33, 34];
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await authorizer.signMessage(hashedMessage);
             await expect(
-                ownerAssetManager.addERC20Single(
-                    ERC20.address,
-                    amount,
-                    beneficiaries,
-                    percentages
+                ownerAssetManager.addERC20Assets(
+                    userTag,
+                    [ERC20.address],
+                    [amount],
+                    [beneficiaries],
+                    [percentages],
+                    hashedMessage,
+                    signature
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: Asset allowance is insufficient"
@@ -444,6 +614,8 @@ describe("LegacyAssetManager", async function () {
         });
         it("Should fail to add single ERC20 asset when percentages exceed 100", async () => {
             const {
+                admin,
+                authorizer,
                 owner,
                 beneficiary,
                 ownerAssetManager,
@@ -453,6 +625,7 @@ describe("LegacyAssetManager", async function () {
                 beneficiary1,
                 beneficiary2,
             } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
             const amount = ethers.utils.parseEther("100");
             await ownerERC20.approve(
                 ownerVault.address,
@@ -464,12 +637,22 @@ describe("LegacyAssetManager", async function () {
                 beneficiary2.address,
             ];
             const percentages = [33, 34, 34];
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await authorizer.signMessage(hashedMessage);
             await expect(
-                ownerAssetManager.addERC20Single(
-                    ERC20.address,
-                    amount,
-                    beneficiaries,
-                    percentages
+                ownerAssetManager.addERC20Assets(
+                    userTag,
+                    [ERC20.address],
+                    [amount],
+                    [beneficiaries],
+                    [percentages],
+                    hashedMessage,
+                    signature
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: Beneficiary percentages exceed 100"
@@ -477,10 +660,11 @@ describe("LegacyAssetManager", async function () {
         });
     });
 
-    context("claimERC20Single", async () => {
+    context("Claim ERC20 Asset - Single", async () => {
         it("Should claim single ERC20 asset", async () => {
             const {
                 admin,
+                authorizer,
                 owner,
                 beneficiary,
                 ownerAssetManager,
@@ -491,6 +675,7 @@ describe("LegacyAssetManager", async function () {
                 beneficiary1,
                 beneficiary2,
             } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
             const amount = ethers.utils.parseEther("100");
             await ownerERC20.approve(
                 ownerVault.address,
@@ -502,30 +687,41 @@ describe("LegacyAssetManager", async function () {
                 beneficiary2.address,
             ];
             const percentages = [33, 33, 34];
-
-            await ownerAssetManager.addERC20Single(
-                ERC20.address,
-                amount,
-                beneficiaries,
-                percentages
-            );
-            const message = ethers.BigNumber.from(
+            const addMessage = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+            const addHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(addMessage)
             );
-            const signature = await admin.signMessage(hashedMessage);
+            const addSignature = await authorizer.signMessage(addHashedMessage);
+            await ownerAssetManager.addERC20Assets(
+                userTag,
+                [ERC20.address],
+                [amount],
+                [beneficiaries],
+                [percentages],
+                addHashedMessage,
+                addSignature
+            );
+            const claimMessage = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const claimHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(claimMessage)
+            );
+            const claimSignature = await admin.signMessage(claimHashedMessage);
             await expect(
                 beneficiaryAssetManager.claimERC20Asset(
+                    userTag,
                     owner.address,
                     ERC20.address,
-                    hashedMessage,
-                    signature
+                    claimHashedMessage,
+                    claimSignature
                 )
             )
                 .to.emit(beneficiaryAssetManager, "ERC20AssetClaimed")
                 .withArgs(
+                    userTag,
                     owner.address,
                     beneficiary.address,
                     ERC20.address,
@@ -535,6 +731,7 @@ describe("LegacyAssetManager", async function () {
         it("Should fail to claim single ERC20 asset twice", async () => {
             const {
                 admin,
+                authorizer,
                 owner,
                 beneficiary,
                 ownerAssetManager,
@@ -545,6 +742,7 @@ describe("LegacyAssetManager", async function () {
                 beneficiary1,
                 beneficiary2,
             } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
             const amount = ethers.utils.parseEther("100");
             await ownerERC20.approve(
                 ownerVault.address,
@@ -556,32 +754,43 @@ describe("LegacyAssetManager", async function () {
                 beneficiary2.address,
             ];
             const percentages = [33, 33, 34];
-
-            await ownerAssetManager.addERC20Single(
-                ERC20.address,
-                amount,
-                beneficiaries,
-                percentages
-            );
-            const message = ethers.BigNumber.from(
+            const addMessage = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+            const addHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(addMessage)
             );
-            const signature = await admin.signMessage(hashedMessage);
+            const addSignature = await authorizer.signMessage(addHashedMessage);
+            await ownerAssetManager.addERC20Assets(
+                userTag,
+                [ERC20.address],
+                [amount],
+                [beneficiaries],
+                [percentages],
+                addHashedMessage,
+                addSignature
+            );
+            const claimMessage = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const claimHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(claimMessage)
+            );
+            const claimSignature = await admin.signMessage(claimHashedMessage);
             await beneficiaryAssetManager.claimERC20Asset(
+                userTag,
                 owner.address,
                 ERC20.address,
-                hashedMessage,
-                signature
+                claimHashedMessage,
+                claimSignature
             );
             await expect(
                 beneficiaryAssetManager.claimERC20Asset(
+                    userTag,
                     owner.address,
                     ERC20.address,
-                    hashedMessage,
-                    signature
+                    claimHashedMessage,
+                    claimSignature
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: Beneficiary has already claimed the asset"
@@ -590,6 +799,7 @@ describe("LegacyAssetManager", async function () {
         it("Should fail to claim single ERC20 asset by non beneficiary", async () => {
             const {
                 admin,
+                authorizer,
                 owner,
                 beneficiary,
                 ownerAssetManager,
@@ -601,6 +811,7 @@ describe("LegacyAssetManager", async function () {
                 beneficiary2,
                 beneficiary3,
             } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
             const amount = ethers.utils.parseEther("100");
             await ownerERC20.approve(
                 ownerVault.address,
@@ -612,31 +823,43 @@ describe("LegacyAssetManager", async function () {
                 beneficiary3.address,
             ];
             const percentages = [33, 33, 34];
-            await ownerAssetManager.addERC20Single(
-                ERC20.address,
-                amount,
-                beneficiaries,
-                percentages
-            );
-            const message = ethers.BigNumber.from(
+            const addMessage = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+            const addHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(addMessage)
             );
-            const signature = await admin.signMessage(hashedMessage);
+            const addSignature = await authorizer.signMessage(addHashedMessage);
+            await ownerAssetManager.addERC20Assets(
+                userTag,
+                [ERC20.address],
+                [amount],
+                [beneficiaries],
+                [percentages],
+                addHashedMessage,
+                addSignature
+            );
+            const claimMessage = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const claimHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(claimMessage)
+            );
+            const claimSignature = await admin.signMessage(claimHashedMessage);
             await expect(
                 beneficiaryAssetManager.claimERC20Asset(
+                    userTag,
                     owner.address,
                     ERC20.address,
-                    hashedMessage,
-                    signature
+                    claimHashedMessage,
+                    claimSignature
                 )
             ).to.be.revertedWith("LegacyAssetManager: Beneficiary not found");
         });
         it("Should fail to claim single ERC20 asset by non beneficiary", async () => {
             const {
                 admin,
+                authorizer,
                 owner,
                 beneficiary,
                 ownerAssetManager,
@@ -648,6 +871,7 @@ describe("LegacyAssetManager", async function () {
                 beneficiary2,
                 beneficiary3,
             } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
             const amount = ethers.utils.parseEther("100");
             await ownerERC20.approve(
                 ownerVault.address,
@@ -659,11 +883,107 @@ describe("LegacyAssetManager", async function () {
                 beneficiary3.address,
             ];
             const percentages = [33, 33, 34];
-            await ownerAssetManager.addERC20Single(
-                ERC20.address,
-                amount,
-                beneficiaries,
-                percentages
+            const addMessage = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const addHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(addMessage)
+            );
+            const addSignature = await authorizer.signMessage(addHashedMessage);
+            await ownerAssetManager.addERC20Assets(
+                userTag,
+                [ERC20.address],
+                [amount],
+                [beneficiaries],
+                [percentages],
+                addHashedMessage,
+                addSignature
+            );
+            const claimMessage = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const claimHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(claimMessage)
+            );
+            const claimSignature = await admin.signMessage(claimHashedMessage);
+            await ownerERC20.transfer(
+                beneficiary3.address,
+                await ownerERC20.balanceOf(owner.address)
+            );
+            await expect(
+                beneficiaryAssetManager.claimERC20Asset(
+                    userTag,
+                    owner.address,
+                    ERC20.address,
+                    claimHashedMessage,
+                    claimSignature
+                )
+            ).to.be.revertedWith(
+                "LegacyAssetManager: Owner has zero balance for this asset"
+            );
+        });
+    });
+
+    context("Add Backup Wallet", async () => {
+        it("Should add a backup wallet for a valid user", async () => {
+            const { owner, ownerAssetManager, backupWallet } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
+            await expect(
+                ownerAssetManager.setBackupWallet(userTag, backupWallet.address)
+            )
+                .to.emit(ownerAssetManager, "BackupWalletAdded")
+                .withArgs(userTag, owner.address, backupWallet.address);
+        });
+        it("Should fail to add a backup wallet with zero address", async () => {
+            const { owner, ownerAssetManager } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
+            await expect(
+                ownerAssetManager.setBackupWallet(
+                    userTag,
+                    ethers.constants.AddressZero
+                )
+            ).to.be.revertedWith(
+                "LegacyAssetManager: Invalid address for backup wallet"
+            );
+        });
+        it("Should fail to add a backup wallet with already added address", async () => {
+            const { owner, ownerAssetManager, backupWallet } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
+            await ownerAssetManager.setBackupWallet(
+                userTag,
+                backupWallet.address
+            );
+            await expect(
+                ownerAssetManager.setBackupWallet(userTag, backupWallet.address)
+            ).to.be.revertedWith(
+                "LegacyAssetManager: Backup wallet provided already set"
+            );
+        });
+    });
+
+    context("Switch Backup Wallet", async () => {
+        it("Should switch to backup wallet", async () => {
+            const {
+                admin,
+                authorizer,
+                owner,
+                ownerAssetManager,
+                backupWalletAssetManager,
+                ERC721,
+                ERC20,
+                ownerERC20,
+                ownerVault,
+                beneficiary,
+                beneficiary1,
+                beneficiary2,
+                beneficiary3,
+                beneficiary4,
+                backupWallet,
+            } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
+            await ownerAssetManager.setBackupWallet(
+                userTag,
+                backupWallet.address
             );
             const message = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
@@ -671,20 +991,350 @@ describe("LegacyAssetManager", async function () {
             const hashedMessage = ethers.utils.arrayify(
                 ethers.utils.hashMessage(message)
             );
-            const signature = await admin.signMessage(hashedMessage);
-            await ownerERC20.transfer(
-                beneficiary3.address,
-                await ownerERC20.balanceOf(owner.address)
+            const signature = await authorizer.signMessage(hashedMessage);
+            await ownerAssetManager.addERC721Assets(
+                userTag,
+                [
+                    ERC721.address,
+                    ERC721.address,
+                    ERC721.address,
+                    ERC721.address,
+                    ERC721.address,
+                ],
+                [1, 2, 3, 4, 5],
+                [
+                    beneficiary.address,
+                    beneficiary1.address,
+                    beneficiary2.address,
+                    beneficiary3.address,
+                    beneficiary4.address,
+                ],
+                hashedMessage,
+                signature
+            );
+            const amount = ethers.utils.parseEther("100");
+            const beneficiaires = [
+                beneficiary.address,
+                beneficiary1.address,
+                beneficiary2.address,
+            ];
+            const percentages = [33, 33, 34];
+            await ownerERC20.approve(
+                ownerVault.address,
+                ethers.utils.parseEther("100")
+            );
+            await ownerAssetManager.addERC20Assets(
+                userTag,
+                [ERC20.address],
+                [amount],
+                [beneficiaires],
+                [percentages],
+                hashedMessage,
+                signature
             );
             await expect(
-                beneficiaryAssetManager.claimERC20Asset(
+                backupWalletAssetManager.switchBackupWallet(
+                    userTag,
+                    owner.address
+                )
+            ).to.emit(backupWalletAssetManager, "BackupWalletSwitched");
+        });
+        it("Should fail to swith backup wallet when called by non backup wallet", async () => {
+            const {
+                admin,
+                authorizer,
+                owner,
+                ownerAssetManager,
+                backupWalletAssetManager,
+                ERC721,
+                ERC20,
+                ownerERC20,
+                ownerVault,
+                beneficiary,
+                beneficiary1,
+                beneficiary2,
+                beneficiary3,
+                beneficiary4,
+                backupWallet,
+            } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
+            await ownerAssetManager.setBackupWallet(
+                userTag,
+                backupWallet.address
+            );
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await authorizer.signMessage(hashedMessage);
+            await ownerAssetManager.addERC721Assets(
+                userTag,
+                [
+                    ERC721.address,
+                    ERC721.address,
+                    ERC721.address,
+                    ERC721.address,
+                    ERC721.address,
+                ],
+                [1, 2, 3, 4, 5],
+                [
+                    beneficiary.address,
+                    beneficiary1.address,
+                    beneficiary2.address,
+                    beneficiary3.address,
+                    beneficiary4.address,
+                ],
+                hashedMessage,
+                signature
+            );
+            const amount = ethers.utils.parseEther("100");
+            const beneficiaires = [
+                beneficiary.address,
+                beneficiary1.address,
+                beneficiary2.address,
+            ];
+            const percentages = [33, 33, 34];
+            await ownerERC20.approve(
+                ownerVault.address,
+                ethers.utils.parseEther("100")
+            );
+            await ownerAssetManager.addERC20Assets(
+                userTag,
+                [ERC20.address],
+                [amount],
+                [beneficiaires],
+                [percentages],
+                hashedMessage,
+                signature
+            );
+            await expect(
+                ownerAssetManager.switchBackupWallet(userTag, owner.address)
+            ).to.be.revertedWith(
+                "LegacyAssetManager: Unauthorized backup wallet transfer call"
+            );
+        });
+    });
+
+    context("Change ERC721 Asset Beneficiary", async () => {
+        it("Should change the Asset beneficiary for ERC721 Asset", async () => {
+            const {
+                admin,
+                authorizer,
+                owner,
+                ownerAssetManager,
+                ERC721,
+                beneficiary,
+                beneficiary1,
+            } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await authorizer.signMessage(hashedMessage);
+            await ownerAssetManager.addERC721Assets(
+                userTag,
+                [ERC721.address],
+                [1],
+                [beneficiary.address],
+                hashedMessage,
+                signature
+            );
+            await expect(
+                ownerAssetManager.setBeneficiary(
+                    userTag,
+                    ERC721.address,
+                    1,
+                    beneficiary1.address
+                )
+            )
+                .to.emit(ownerAssetManager, "BeneficiaryChanged")
+                .withArgs(
+                    userTag,
                     owner.address,
-                    ERC20.address,
-                    hashedMessage,
-                    signature
+                    ERC721.address,
+                    1,
+                    beneficiary1.address
+                );
+        });
+        it("Should fail to change the Asset beneficiary for ERC721 Asset when asset has been transferred", async () => {
+            const {
+                admin,
+                authorizer,
+                owner,
+                ownerAssetManager,
+                beneficiaryAssetManager,
+                ERC721,
+                beneficiary,
+                beneficiary1,
+            } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
+            const message = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(message)
+            );
+            const signature = await authorizer.signMessage(hashedMessage);
+            await ownerAssetManager.addERC721Assets(
+                userTag,
+                [ERC721.address],
+                [1],
+                [beneficiary.address],
+                hashedMessage,
+                signature
+            );
+            const claimMessage = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const claimHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(claimMessage)
+            );
+            const claimSignature = await admin.signMessage(claimHashedMessage);
+            await beneficiaryAssetManager.claimERC721Asset(
+                userTag,
+                owner.address,
+                ERC721.address,
+                1,
+                claimHashedMessage,
+                claimSignature
+            );
+            await expect(
+                ownerAssetManager.setBeneficiary(
+                    userTag,
+                    ERC721.address,
+                    1,
+                    beneficiary1.address
                 )
             ).to.be.revertedWith(
-                "LegacyAssetManager: Owner has zero balance for this asset"
+                "LegacyAssetManager: Asset has been transferred"
+            );
+        });
+    });
+
+    context("Change ERC20 Asset beneficiary percentages", async () => {
+        it("Should change the percentages for ERC20 Asset beneficiary", async () => {
+            const {
+                admin,
+                authorizer,
+                owner,
+                beneficiary,
+                ownerAssetManager,
+                ERC20,
+                ownerVault,
+                ownerERC20,
+                beneficiaryAssetManager,
+                beneficiary1,
+                beneficiary2,
+            } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
+            const amount = ethers.utils.parseEther("100");
+            await ownerERC20.approve(
+                ownerVault.address,
+                ethers.utils.parseEther("100")
+            );
+            const beneficiaries = [
+                beneficiary.address,
+                beneficiary1.address,
+                beneficiary2.address,
+            ];
+            const percentages = [33, 33, 34];
+            const addMessage = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const addHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(addMessage)
+            );
+            const addSignature = await authorizer.signMessage(addHashedMessage);
+            await ownerAssetManager.addERC20Assets(
+                userTag,
+                [ERC20.address],
+                [amount],
+                [beneficiaries],
+                [percentages],
+                addHashedMessage,
+                addSignature
+            );
+            await expect(
+                ownerAssetManager.setBeneficiaryPercentage(
+                    userTag,
+                    ERC20.address,
+                    beneficiary.address,
+                    30
+                )
+            )
+                .to.emit(ownerAssetManager, "BeneficiaryPercentageChanged")
+                .withArgs(
+                    userTag,
+                    owner.address,
+                    ERC20.address,
+                    beneficiary.address,
+                    30
+                );
+            expect(
+                (
+                    await ownerAssetManager.getERC20Asset(
+                        owner.address,
+                        ERC20.address
+                    )
+                ).beneficiaries[0].allowedPercentage
+            ).to.be.equals(30);
+        });
+        it("Should change the percentages for ERC20 Asset beneficiary", async () => {
+            const {
+                admin,
+                authorizer,
+                owner,
+                beneficiary,
+                ownerAssetManager,
+                ERC20,
+                ownerVault,
+                ownerERC20,
+                beneficiaryAssetManager,
+                beneficiary1,
+                beneficiary2,
+            } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
+            const amount = ethers.utils.parseEther("100");
+            await ownerERC20.approve(
+                ownerVault.address,
+                ethers.utils.parseEther("100")
+            );
+            const beneficiaries = [
+                beneficiary.address,
+                beneficiary1.address,
+                beneficiary2.address,
+            ];
+            const percentages = [33, 33, 34];
+            const addMessage = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const addHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(addMessage)
+            );
+            const addSignature = await authorizer.signMessage(addHashedMessage);
+            await ownerAssetManager.addERC20Assets(
+                userTag,
+                [ERC20.address],
+                [amount],
+                [beneficiaries],
+                [percentages],
+                addHashedMessage,
+                addSignature
+            );
+            await expect(
+                ownerAssetManager.setBeneficiaryPercentage(
+                    userTag,
+                    ERC20.address,
+                    beneficiary.address,
+                    34
+                )
+            ).to.be.revertedWith(
+                "LegacyAssetManager: Beneficiary percentage exceeds 100"
             );
         });
     });
