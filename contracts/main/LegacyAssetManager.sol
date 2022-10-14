@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.15;
+pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -8,10 +8,9 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "../interfaces/ILegacyVaultFactory.sol";
 import "../interfaces/ILegacyVault.sol";
-
-import "hardhat/console.sol";
 
 contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -28,7 +27,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     mapping(address => bool) public listedMembers;
     mapping(address => address) public backupWallets;
 
-    event ERC21AssetAdded(
+    event ERC721AssetAdded(
         string userTag,
         address indexed owner,
         address _contract,
@@ -150,13 +149,13 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function addERC721Assets(
-        string calldata userTag,
-        address[] calldata _contracts,
-        uint256[] calldata tokenIds,
-        address[] calldata beneficiaries,
+        string memory userTag,
+        address[] memory _contracts,
+        uint256[] memory tokenIds,
+        address[] memory beneficiaries,
         bytes32 hashedMessage,
-        bytes calldata signature
-    ) external {
+        bytes memory signature
+    ) external nonReentrant {
         require(
             _contracts.length == tokenIds.length &&
                 tokenIds.length == beneficiaries.length,
@@ -181,7 +180,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function _addERC721Single(
-        string calldata userTag,
+        string memory userTag,
         address _contract,
         uint256 tokenId,
         address beneficiary
@@ -207,7 +206,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
             ERC721Asset(_msgSender(), _contract, tokenId, beneficiary, false)
         );
         listedAssets[_contract][tokenId] = true;
-        emit ERC21AssetAdded(
+        emit ERC721AssetAdded(
             userTag,
             _msgSender(),
             _contract,
@@ -217,17 +216,18 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function addERC20Assets(
-        string calldata userTag,
-        address[] calldata contracts,
-        uint256[] calldata totalAmounts,
-        address[][] calldata beneficiaryAddresses,
-        uint8[][] calldata beneficiaryPercentages,
+        string memory userTag,
+        address[] memory contracts,
+        uint256[] memory totalAmounts,
+        address[][] memory beneficiaryAddresses,
+        uint8[][] memory beneficiaryPercentages,
         bytes32 hashedMessage,
-        bytes calldata signature
-    ) external {
+        bytes memory signature
+    ) external nonReentrant {
         require(
             contracts.length == beneficiaryAddresses.length &&
-                beneficiaryAddresses.length == totalAmounts.length,
+                beneficiaryAddresses.length == totalAmounts.length &&
+                totalAmounts.length == beneficiaryPercentages.length,
             "LegacyAssetManager: Arguments length mismatch"
         );
         if (!listedMembers[_msgSender()]) {
@@ -250,11 +250,11 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function _addERC20Single(
-        string calldata userTag,
+        string memory userTag,
         address _contract,
         uint256 totalAmount,
-        address[] calldata beneficiaryAddresses,
-        uint8[] calldata beneficiaryPercentages
+        address[] memory beneficiaryAddresses,
+        uint8[] memory beneficiaryPercentages
     ) internal {
         require(
             beneficiaryAddresses.length == beneficiaryPercentages.length,
@@ -314,10 +314,10 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function removeERC721Single(
-        string calldata userTag,
+        string memory userTag,
         address _contract,
         uint256 tokenId
-    ) external {
+    ) external nonReentrant {
         require(
             listedAssets[_contract][tokenId],
             "LegacyAssetManager: Asset not found"
@@ -331,24 +331,24 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
             assetIndex < userAssets[_msgSender()].erc721Assets.length,
             "LegacyAssetManager: Asset not found"
         );
-        bool transferStatus = userAssets[_msgSender()]
-            .erc721Assets[assetIndex]
-            .transferStatus;
         require(
-            !transferStatus,
+            !userAssets[_msgSender()].erc721Assets[assetIndex].transferStatus,
             "LegacyAssetManager: Asset has been transferred to the beneficiary"
         );
-        _removeAsset(_msgSender(), AssetType.erc721, assetIndex);
+        userAssets[_msgSender()].erc721Assets[assetIndex] = userAssets[
+            _msgSender()
+        ].erc721Assets[userAssets[_msgSender()].erc721Assets.length - 1];
+        userAssets[_msgSender()].erc721Assets.pop();
         emit ERC721AssetRemoved(userTag, _msgSender(), _contract, tokenId);
     }
 
-    function removeERC20Single(string calldata userTag, address _contract)
+    function removeERC20Single(string memory userTag, address _contract)
         external
+        nonReentrant
     {
         uint256 assetIndex = _findERC20AssetIndex(_msgSender(), _contract);
         require(
-            userAssets[_msgSender()].erc20Assets[assetIndex]._contract !=
-                address(0),
+            assetIndex < userAssets[_msgSender()].erc20Assets.length,
             "LegacyAssetManager: Asset not found"
         );
         require(
@@ -357,7 +357,10 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
                 .remainingBeneficiaries > 0,
             "LegacyAssetManager: Asset has been transferred to the beneficiaries"
         );
-        _removeAsset(_msgSender(), AssetType.erc20, assetIndex);
+        userAssets[_msgSender()].erc20Assets[assetIndex] = userAssets[
+            _msgSender()
+        ].erc20Assets[userAssets[_msgSender()].erc20Assets.length - 1];
+        userAssets[_msgSender()].erc20Assets.pop();
         emit ERC20AssetRemoved(
             userTag,
             _msgSender(),
@@ -398,22 +401,6 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         return userAssets[user].erc20Assets.length;
     }
 
-    function _removeAsset(
-        address user,
-        AssetType assetType,
-        uint256 assetIndex
-    ) internal {
-        if (assetType == AssetType.erc721) {
-            userAssets[user].erc721Assets[assetIndex] = userAssets[user]
-                .erc721Assets[userAssets[user].erc721Assets.length - 1];
-            userAssets[user].erc721Assets.pop();
-        } else {
-            userAssets[user].erc20Assets[assetIndex] = userAssets[user]
-                .erc20Assets[userAssets[user].erc20Assets.length];
-            userAssets[user].erc20Assets.pop();
-        }
-    }
-
     function getERC721Asset(
         address user,
         address _contract,
@@ -444,7 +431,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         return backupWallets[owner];
     }
 
-    function setBackupWallet(string calldata userTag, address _backupWallet)
+    function setBackupWallet(string memory userTag, address _backupWallet)
         external
     {
         require(
@@ -463,9 +450,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         emit BackupWalletAdded(userTag, _msgSender(), _backupWallet);
     }
 
-    function switchBackupWallet(string calldata userTag, address owner)
-        external
-    {
+    function switchBackupWallet(string memory userTag, address owner) external {
         require(
             _msgSender() == backupWallets[owner],
             "LegacyAssetManager: Unauthorized backup wallet transfer call"
@@ -512,28 +497,24 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         emit BackupWalletSwitched(userTag, owner, _msgSender());
     }
 
-    function addAdmin(address _admin) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _grantRole(LEGACY_ADMIN, _admin);
-    }
-
-    function removeAdmin(address _admin) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _revokeRole(LEGACY_ADMIN, _admin);
-    }
-
     function claimERC721Asset(
-        string calldata userTag,
+        string memory userTag,
         address owner,
         address _contract,
         uint256 tokenId,
         bytes32 hashedMessage,
-        bytes calldata signature
-    ) external {
+        bytes memory signature
+    ) external nonReentrant {
         address signer = _verifySignature(hashedMessage, signature);
         require(
             hasRole(LEGACY_ADMIN, signer),
             "LegacyAssetManager: Unauthorized signature"
         );
         uint256 assetIndex = _findERC721AssetIndex(owner, _contract, tokenId);
+        require(
+            assetIndex < userAssets[owner].erc721Assets.length,
+            "LegacyAssetManager: Asset not found"
+        );
         ERC721Asset memory erc721Asset = userAssets[owner].erc721Assets[
             assetIndex
         ];
@@ -574,18 +555,22 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function claimERC20Asset(
-        string calldata userTag,
+        string memory userTag,
         address owner,
         address _contract,
         bytes32 hashedMessage,
-        bytes calldata signature
-    ) external {
+        bytes memory signature
+    ) external nonReentrant {
         address signer = _verifySignature(hashedMessage, signature);
         require(
             hasRole(LEGACY_ADMIN, signer),
             "LegacyAssetManager: Unauthorized signature"
         );
         uint256 assetIndex = _findERC20AssetIndex(owner, _contract);
+        require(
+            assetIndex < userAssets[owner].erc20Assets.length,
+            "LegacyAssetManager: Asset not found"
+        );
         ERC20Asset memory erc20Asset = userAssets[owner].erc20Assets[
             assetIndex
         ];
@@ -659,7 +644,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function setBeneficiary(
-        string calldata userTag,
+        string memory userTag,
         address _contract,
         uint256 tokenId,
         address newBeneficiary
@@ -690,12 +675,16 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function setBeneficiaryPercentage(
-        string calldata userTag,
+        string memory userTag,
         address _contract,
         address beneficiary,
         uint8 newPercentage
     ) external {
         uint256 assetIndex = _findERC20AssetIndex(_msgSender(), _contract);
+        require(
+            assetIndex < userAssets[_msgSender()].erc20Assets.length,
+            "LegacyAssetManager: Asset not found"
+        );
         ERC20Asset memory erc20Asset = userAssets[_msgSender()].erc20Assets[
             assetIndex
         ];
@@ -735,38 +724,19 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         vaultFactory = ILegacyVaultFactory(_vaultFactory);
     }
 
-    function _verifySignature(bytes32 _hashedMessage, bytes calldata signature)
+    function _verifySignature(bytes32 _hashedMessage, bytes memory signature)
         internal
         pure
         returns (address)
     {
-        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
-        (bytes32 r, bytes32 s, uint8 v) = _splitSignature(signature);
-        bytes32 prefixedHashMessage = keccak256(
-            abi.encodePacked(prefix, _hashedMessage)
+        bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(
+            _hashedMessage
         );
-        address signer = ecrecover(prefixedHashMessage, v, r, s);
+        address signer = ECDSA.recover(ethSignedMessageHash, signature);
+        require(
+            signer != address(0),
+            "LegacyAssetManager: Invalid signature provided"
+        );
         return signer;
-    }
-
-    function _splitSignature(bytes memory sig)
-        internal
-        pure
-        returns (
-            bytes32 r,
-            bytes32 s,
-            uint8 v
-        )
-    {
-        require(sig.length == 65, "invalid signature length");
-
-        assembly {
-            // first 32 bytes, after the length prefix
-            r := mload(add(sig, 32))
-            // second 32 bytes
-            s := mload(add(sig, 64))
-            // final byte (first byte of the next 32 bytes)
-            v := byte(0, mload(add(sig, 96)))
-        }
     }
 }

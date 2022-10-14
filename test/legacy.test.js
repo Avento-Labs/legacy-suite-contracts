@@ -143,7 +143,7 @@ describe("LegacyAssetManager", async function () {
                     signature
                 )
             )
-                .to.emit(ownerAssetManager, "ERC21AssetAdded")
+                .to.emit(ownerAssetManager, "ERC721AssetAdded")
                 .withArgs(
                     userTag,
                     owner.address,
