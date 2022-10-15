@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "../interfaces/ILegacyVault.sol";
 
@@ -42,6 +43,22 @@ contract LegacyVault is ILegacyVault, AccessControl, Pausable {
             _ownerAddress,
             _recipientAddress,
             _tokenId
+        );
+    }
+
+    function transferErc1155TokensAllowed(
+        address _contractAddress,
+        address _ownerAddress,
+        address _recipientAddress,
+        uint256 _tokenId,
+        uint256 _amount
+    ) external {
+        IERC1155(_contractAddress).safeTransferFrom(
+            _ownerAddress,
+            _recipientAddress,
+            _tokenId,
+            _amount,
+            "0x01"
         );
     }
 
