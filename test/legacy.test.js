@@ -432,7 +432,7 @@ describe("LegacyAssetManager", async function () {
                 )
             ).to.be.revertedWith("LegacyAssetManager: Asset not found");
         });
-        it("Should fail to claim single ERC1155 Asset twice", async function () {
+        it("Should fail to claim single ERC1155 Asset when beneficiary has already claimed the asset", async function () {
             const {
                 admin,
                 authorizer,
@@ -486,7 +486,7 @@ describe("LegacyAssetManager", async function () {
                 "LegacyAssetManager: Beneficiary has already claimed the asset"
             );
         });
-        it("Should fail to claim single ERC1155 Asset twice", async function () {
+        it("Should fail to claim single ERC1155 Asset when owner has zero balance for the asset", async function () {
             const {
                 admin,
                 authorizer,
@@ -540,6 +540,63 @@ describe("LegacyAssetManager", async function () {
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: Owner has zero balance for this asset"
+            );
+        });
+        it("Should fail to claim single ERC1155 Asset with duplicate signature", async function () {
+            const {
+                admin,
+                authorizer,
+                owner,
+                ownerAssetManager,
+                ownerERC1155,
+                ERC1155,
+                beneficiary,
+                beneficiary1,
+                beneficiaryAssetManager,
+            } = await deploy();
+            const userTag = ethers.utils.hashMessage(owner.address);
+            const addMessage = ethers.BigNumber.from(
+                ethers.utils.randomBytes(4)
+            ).toString();
+            const addHashedMessage = ethers.utils.arrayify(
+                ethers.utils.hashMessage(addMessage)
+            );
+            const addSignature = await authorizer.signMessage(addHashedMessage);
+            await ownerAssetManager.addERC1155Assets(
+                userTag,
+                [ERC1155.address],
+                [1],
+                [1],
+                [[beneficiary.address]],
+                [[100]],
+                addHashedMessage,
+                addSignature
+            );
+            const claimHashedMessage = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address", "uint256"],
+                    [owner.address, beneficiary.address, ERC1155.address, 1]
+                )
+            );
+            const claimSignature1 = await admin.signMessage(claimHashedMessage);
+            const claimSignature2 = await admin.signMessage(claimHashedMessage);
+            await ownerERC1155.safeTransferFrom(
+                owner.address,
+                beneficiary1.address,
+                1,
+                1,
+                "0x01"
+            );
+            await expect(
+                beneficiaryAssetManager.claimERC1155Asset(
+                    userTag,
+                    owner.address,
+                    ERC1155.address,
+                    1,
+                    [claimSignature1, claimSignature2]
+                )
+            ).to.be.revertedWith(
+                "LegacyAssetManager: Duplicate signature not allowed"
             );
         });
     });

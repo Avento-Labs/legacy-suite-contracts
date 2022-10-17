@@ -16,6 +16,7 @@ contract LegacyVault is ILegacyVault, AccessControl, Pausable {
 
     constructor(address _memberAddress, address _legacyAddress) {
         _setupRole(DEFAULT_ADMIN_ROLE, _memberAddress);
+        _setRoleAdmin(ADMIN_ROLE, DEFAULT_ADMIN_ROLE);
         _setupRole(ADMIN_ROLE, _memberAddress);
         _setupRole(ADMIN_ROLE, _legacyAddress);
     }

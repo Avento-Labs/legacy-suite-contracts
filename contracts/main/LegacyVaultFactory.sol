@@ -14,7 +14,9 @@ contract LegacyVaultFactory is ILegacyVaultFactory, AccessControl, Pausable {
     mapping(address => LegacyVault) private memberToContract;
 
     constructor() {
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _setRoleAdmin(ADMIN_ROLE, DEFAULT_ADMIN_ROLE);
+        _setupRole(ADMIN_ROLE, _msgSender());
     }
 
     modifier validAddress(address _address) {
