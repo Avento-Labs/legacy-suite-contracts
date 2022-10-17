@@ -42,7 +42,8 @@ async function deploy() {
     const LegacyVaultFactory = await LegacyVaultFactoryArtifact.deploy();
     await LegacyVaultFactory.deployed();
     const LegacyAssetManager = await LegacyAssetManagerFactory.deploy(
-        LegacyVaultFactory.address
+        LegacyVaultFactory.address,
+        1
     );
 
     await LegacyAssetManager.deployed();
@@ -313,22 +314,21 @@ describe("LegacyAssetManager", async function () {
                 addHashedMessage,
                 addSignature
             );
-            const claimMessage = ethers.BigNumber.from(
-                ethers.utils.randomBytes(4)
-            ).toString();
             const claimHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(claimMessage)
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address", "uint256"],
+                    [owner.address, beneficiary.address, ERC1155.address, 1]
+                )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
-            // check if event is emitted
+
             await expect(
                 beneficiaryAssetManager.claimERC1155Asset(
                     userTag,
                     owner.address,
                     ERC1155.address,
                     1,
-                    claimHashedMessage,
-                    claimSignature
+                    [claimSignature]
                 )
             )
                 .to.emit(beneficiaryAssetManager, "ERC1155AssetClaimed") // transfer from minter to redeemer
@@ -338,7 +338,8 @@ describe("LegacyAssetManager", async function () {
                     beneficiary.address,
                     ERC1155.address,
                     1,
-                    1
+                    1,
+                    [admin.address]
                 );
         });
         it("Should fail to claim single ERC1155 Asset with invalid signature", async function () {
@@ -369,22 +370,20 @@ describe("LegacyAssetManager", async function () {
                 addHashedMessage,
                 addSignature
             );
-            const claimMessage = ethers.BigNumber.from(
-                ethers.utils.randomBytes(4)
-            ).toString();
             const claimHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(claimMessage)
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address", "uint256"],
+                    [owner.address, beneficiary.address, ERC1155.address, 1]
+                )
             );
             const claimSignature = await owner.signMessage(claimHashedMessage);
-            // check if event is emitted
             await expect(
                 beneficiaryAssetManager.claimERC1155Asset(
                     userTag,
                     owner.address,
                     ERC1155.address,
                     1,
-                    claimHashedMessage,
-                    claimSignature
+                    [claimSignature]
                 )
             ).to.be.revertedWith("LegacyAssetManager: Unauthorized signature");
         });
@@ -416,11 +415,11 @@ describe("LegacyAssetManager", async function () {
                 addHashedMessage,
                 addSignature
             );
-            const claimMessage = ethers.BigNumber.from(
-                ethers.utils.randomBytes(4)
-            ).toString();
             const claimHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(claimMessage)
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address", "uint256"],
+                    [owner.address, beneficiary.address, ERC1155.address, 2]
+                )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
             await expect(
@@ -429,8 +428,7 @@ describe("LegacyAssetManager", async function () {
                     owner.address,
                     ERC1155.address,
                     2,
-                    claimHashedMessage,
-                    claimSignature
+                    [claimSignature]
                 )
             ).to.be.revertedWith("LegacyAssetManager: Asset not found");
         });
@@ -462,11 +460,11 @@ describe("LegacyAssetManager", async function () {
                 addHashedMessage,
                 addSignature
             );
-            const claimMessage = ethers.BigNumber.from(
-                ethers.utils.randomBytes(4)
-            ).toString();
             const claimHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(claimMessage)
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address", "uint256"],
+                    [owner.address, beneficiary.address, ERC1155.address, 1]
+                )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
             await beneficiaryAssetManager.claimERC1155Asset(
@@ -474,8 +472,7 @@ describe("LegacyAssetManager", async function () {
                 owner.address,
                 ERC1155.address,
                 1,
-                claimHashedMessage,
-                claimSignature
+                [claimSignature]
             );
             await expect(
                 beneficiaryAssetManager.claimERC1155Asset(
@@ -483,8 +480,7 @@ describe("LegacyAssetManager", async function () {
                     owner.address,
                     ERC1155.address,
                     1,
-                    claimHashedMessage,
-                    claimSignature
+                    [claimSignature]
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: Beneficiary has already claimed the asset"
@@ -520,11 +516,11 @@ describe("LegacyAssetManager", async function () {
                 addHashedMessage,
                 addSignature
             );
-            const claimMessage = ethers.BigNumber.from(
-                ethers.utils.randomBytes(4)
-            ).toString();
             const claimHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(claimMessage)
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address", "uint256"],
+                    [owner.address, beneficiary.address, ERC1155.address, 1]
+                )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
             await ownerERC1155.safeTransferFrom(
@@ -540,8 +536,7 @@ describe("LegacyAssetManager", async function () {
                     owner.address,
                     ERC1155.address,
                     1,
-                    claimHashedMessage,
-                    claimSignature
+                    [claimSignature]
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: Owner has zero balance for this asset"
@@ -611,7 +606,7 @@ describe("LegacyAssetManager", async function () {
                 hashedMessage,
                 signature
             );
-            // check if event is emitted
+
             await expect(
                 ownerAssetManager.addERC721Assets(
                     userTag,
@@ -641,7 +636,7 @@ describe("LegacyAssetManager", async function () {
             );
             const signature = await authorizer.signMessage(hashedMessage);
             await ERC721.mint(beneficiary.address, 11);
-            // check if event is emitted
+
             await expect(
                 ownerAssetManager.addERC721Assets(
                     userTag,
@@ -673,7 +668,7 @@ describe("LegacyAssetManager", async function () {
             );
             const signature = await authorizer.signMessage(hashedMessage);
             await ERC721.mint(owner.address, 11);
-            // check if event is emitted
+
             await expect(
                 ownerAssetManager.addERC721Assets(
                     userTag,
@@ -715,22 +710,21 @@ describe("LegacyAssetManager", async function () {
                 addSignature
             );
 
-            const claimMessage = ethers.BigNumber.from(
-                ethers.utils.randomBytes(4)
-            ).toString();
             const claimHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(claimMessage)
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address", "uint256"],
+                    [owner.address, beneficiary.address, ERC721.address, 1]
+                )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
-            // check if event is emitted
+
             await expect(
                 beneficiaryAssetManager.claimERC721Asset(
                     userTag,
                     owner.address,
                     ERC721.address,
                     1,
-                    claimHashedMessage,
-                    claimSignature
+                    [claimSignature]
                 )
             )
                 .to.emit(beneficiaryAssetManager, "ERC721AssetClaimed") // transfer from minter to redeemer
@@ -739,7 +733,8 @@ describe("LegacyAssetManager", async function () {
                     owner.address,
                     beneficiary.address,
                     ERC721.address,
-                    1
+                    1,
+                    [admin.address]
                 );
             expect(await ERC721.ownerOf(1)).to.be.equals(beneficiary.address);
         });
@@ -770,11 +765,11 @@ describe("LegacyAssetManager", async function () {
                 addSignature
             );
 
-            const claimMessage = ethers.BigNumber.from(
-                ethers.utils.randomBytes(4)
-            ).toString();
             const claimHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(claimMessage)
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address", "uint256"],
+                    [owner.address, beneficiary.address, ERC721.address, 1]
+                )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
 
@@ -783,8 +778,7 @@ describe("LegacyAssetManager", async function () {
                 owner.address,
                 ERC721.address,
                 1,
-                claimHashedMessage,
-                claimSignature
+                [claimSignature]
             );
             await expect(
                 beneficiaryAssetManager.claimERC721Asset(
@@ -792,8 +786,7 @@ describe("LegacyAssetManager", async function () {
                     owner.address,
                     ERC721.address,
                     1,
-                    claimHashedMessage,
-                    claimSignature
+                    [claimSignature]
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: Beneficiary has already claimed the asset"
@@ -827,11 +820,11 @@ describe("LegacyAssetManager", async function () {
                 addSignature
             );
 
-            const claimMessage = ethers.BigNumber.from(
-                ethers.utils.randomBytes(4)
-            ).toString();
             const claimHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(claimMessage)
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address", "uint256"],
+                    [owner.address, beneficiary.address, ERC721.address, 1]
+                )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
 
@@ -841,8 +834,7 @@ describe("LegacyAssetManager", async function () {
                     owner.address,
                     ERC721.address,
                     1,
-                    claimHashedMessage,
-                    claimSignature
+                    [claimSignature]
                 )
             ).to.be.revertedWith("LegacyAssetManager: Unauthorized claim call");
         });
@@ -875,11 +867,11 @@ describe("LegacyAssetManager", async function () {
                 addSignature
             );
 
-            const claimMessage = ethers.BigNumber.from(
-                ethers.utils.randomBytes(4)
-            ).toString();
             const claimHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(claimMessage)
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address", "uint256"],
+                    [owner.address, beneficiary.address, ERC721.address, 1]
+                )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
             await ownerERC721.transferFrom(
@@ -894,8 +886,7 @@ describe("LegacyAssetManager", async function () {
                     owner.address,
                     ERC721.address,
                     1,
-                    claimHashedMessage,
-                    claimSignature
+                    [claimSignature]
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: The asset does not belong to the owner now"
@@ -1137,11 +1128,11 @@ describe("LegacyAssetManager", async function () {
                 addHashedMessage,
                 addSignature
             );
-            const claimMessage = ethers.BigNumber.from(
-                ethers.utils.randomBytes(4)
-            ).toString();
             const claimHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(claimMessage)
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address"],
+                    [owner.address, beneficiary.address, ERC20.address]
+                )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
             await expect(
@@ -1149,8 +1140,7 @@ describe("LegacyAssetManager", async function () {
                     userTag,
                     owner.address,
                     ERC20.address,
-                    claimHashedMessage,
-                    claimSignature
+                    [claimSignature]
                 )
             )
                 .to.emit(beneficiaryAssetManager, "ERC20AssetClaimed")
@@ -1159,7 +1149,8 @@ describe("LegacyAssetManager", async function () {
                     owner.address,
                     beneficiary.address,
                     ERC20.address,
-                    ethers.utils.parseEther("33")
+                    ethers.utils.parseEther("33"),
+                    [admin.address]
                 );
         });
         it("Should fail to claim single ERC20 asset twice", async () => {
@@ -1204,27 +1195,25 @@ describe("LegacyAssetManager", async function () {
                 addHashedMessage,
                 addSignature
             );
-            const claimMessage = ethers.BigNumber.from(
-                ethers.utils.randomBytes(4)
-            ).toString();
             const claimHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(claimMessage)
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address"],
+                    [owner.address, beneficiary.address, ERC20.address]
+                )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
             await beneficiaryAssetManager.claimERC20Asset(
                 userTag,
                 owner.address,
                 ERC20.address,
-                claimHashedMessage,
-                claimSignature
+                [claimSignature]
             );
             await expect(
                 beneficiaryAssetManager.claimERC20Asset(
                     userTag,
                     owner.address,
                     ERC20.address,
-                    claimHashedMessage,
-                    claimSignature
+                    [claimSignature]
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: Beneficiary has already claimed the asset"
@@ -1273,11 +1262,11 @@ describe("LegacyAssetManager", async function () {
                 addHashedMessage,
                 addSignature
             );
-            const claimMessage = ethers.BigNumber.from(
-                ethers.utils.randomBytes(4)
-            ).toString();
             const claimHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(claimMessage)
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address"],
+                    [owner.address, beneficiary.address, ERC20.address]
+                )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
             await expect(
@@ -1285,8 +1274,7 @@ describe("LegacyAssetManager", async function () {
                     userTag,
                     owner.address,
                     ERC20.address,
-                    claimHashedMessage,
-                    claimSignature
+                    [claimSignature]
                 )
             ).to.be.revertedWith("LegacyAssetManager: Beneficiary not found");
         });
@@ -1333,11 +1321,11 @@ describe("LegacyAssetManager", async function () {
                 addHashedMessage,
                 addSignature
             );
-            const claimMessage = ethers.BigNumber.from(
-                ethers.utils.randomBytes(4)
-            ).toString();
             const claimHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(claimMessage)
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address"],
+                    [owner.address, beneficiary.address, ERC20.address]
+                )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
             await ownerERC20.transfer(
@@ -1349,8 +1337,7 @@ describe("LegacyAssetManager", async function () {
                     userTag,
                     owner.address,
                     ERC20.address,
-                    claimHashedMessage,
-                    claimSignature
+                    [claimSignature]
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: Owner has zero balance for this asset"
@@ -1622,11 +1609,11 @@ describe("LegacyAssetManager", async function () {
                 hashedMessage,
                 signature
             );
-            const claimMessage = ethers.BigNumber.from(
-                ethers.utils.randomBytes(4)
-            ).toString();
             const claimHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(claimMessage)
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address", "uint256"],
+                    [owner.address, beneficiary.address, ERC721.address, 1]
+                )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
             await beneficiaryAssetManager.claimERC721Asset(
@@ -1634,8 +1621,7 @@ describe("LegacyAssetManager", async function () {
                 owner.address,
                 ERC721.address,
                 1,
-                claimHashedMessage,
-                claimSignature
+                [claimSignature]
             );
             await expect(
                 ownerAssetManager.setBeneficiary(

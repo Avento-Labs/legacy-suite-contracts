@@ -20,7 +20,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     bytes32 public constant ASSET_AUTHORIZER = keccak256("ASSET_AUTHORIZER");
 
     ILegacyVaultFactory public vaultFactory;
-
+    uint16 public minAdminSignature;
     mapping(address => UserAssets) public userAssets;
     mapping(address => mapping(uint256 => bool)) public listedAssets;
     mapping(address => bool) public listedMembers;
@@ -84,7 +84,8 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address claimer,
         address _contract,
         uint256 indexed tokenId,
-        uint256 amount
+        uint256 amount,
+        address[] signers
     );
 
     event ERC721AssetClaimed(
@@ -92,7 +93,8 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address indexed owner,
         address claimer,
         address _contract,
-        uint256 indexed tokenId
+        uint256 indexed tokenId,
+        address[] signers
     );
 
     event ERC20AssetClaimed(
@@ -100,7 +102,8 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address indexed owner,
         address indexed claimer,
         address _contract,
-        uint256 amount
+        uint256 amount,
+        address[] signers
     );
 
     event BackupWalletAdded(
@@ -174,14 +177,12 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         bool backupWalletStatus;
     }
 
-    enum AssetType {
-        erc721,
-        erc20
-    }
-
-    constructor(address _vaultFactory) {
+    constructor(address _vaultFactory, uint16 _minAdminSignature) {
         vaultFactory = ILegacyVaultFactory(_vaultFactory);
+        minAdminSignature = _minAdminSignature;
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _setRoleAdmin(LEGACY_ADMIN, DEFAULT_ADMIN_ROLE);
+        _setRoleAdmin(ASSET_AUTHORIZER, DEFAULT_ADMIN_ROLE);
         _setupRole(LEGACY_ADMIN, _msgSender());
         _setupRole(ASSET_AUTHORIZER, _msgSender());
     }
@@ -714,14 +715,16 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address owner,
         address _contract,
         uint256 tokenId,
-        bytes32 hashedMessage,
-        bytes calldata signature
+        bytes[] calldata signatures
     ) external nonReentrant {
-        address signer = _verifySignature(hashedMessage, signature);
         require(
-            hasRole(LEGACY_ADMIN, signer),
-            "LegacyAssetManager: Unauthorized signature"
+            signatures.length >= minAdminSignature,
+            "LegacyAssetManger: Signatures are less than minimum required"
         );
+        bytes32 hashedMessage = keccak256(
+            abi.encodePacked(owner, _msgSender(), _contract, tokenId)
+        );
+        address[] memory signers = _verifySigners(hashedMessage, signatures);
         uint256 assetIndex = _findERC1155AssetIndex(owner, _contract, tokenId);
         require(
             assetIndex < userAssets[owner].erc1155Assets.length,
@@ -786,7 +789,8 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
             _msgSender(),
             _contract,
             tokenId,
-            dueAmount
+            dueAmount,
+            signers
         );
     }
 
@@ -795,14 +799,16 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address owner,
         address _contract,
         uint256 tokenId,
-        bytes32 hashedMessage,
-        bytes calldata signature
+        bytes[] calldata signatures
     ) external nonReentrant {
-        address signer = _verifySignature(hashedMessage, signature);
         require(
-            hasRole(LEGACY_ADMIN, signer),
-            "LegacyAssetManager: Unauthorized signature"
+            signatures.length >= minAdminSignature,
+            "LegacyAssetManger: Signatures are less than minimum required"
         );
+        bytes32 hashedMessage = keccak256(
+            abi.encodePacked(owner, _msgSender(), _contract, tokenId)
+        );
+        address[] memory signers = _verifySigners(hashedMessage, signatures);
         uint256 assetIndex = _findERC721AssetIndex(owner, _contract, tokenId);
         require(
             assetIndex < userAssets[owner].erc721Assets.length,
@@ -841,7 +847,8 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
             owner,
             _msgSender(),
             _contract,
-            tokenId
+            tokenId,
+            signers
         );
     }
 
@@ -849,14 +856,16 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         string memory userTag,
         address owner,
         address _contract,
-        bytes32 hashedMessage,
-        bytes calldata signature
+        bytes[] calldata signatures
     ) external nonReentrant {
-        address signer = _verifySignature(hashedMessage, signature);
         require(
-            hasRole(LEGACY_ADMIN, signer),
-            "LegacyAssetManager: Unauthorized signature"
+            signatures.length >= minAdminSignature,
+            "LegacyAssetManger: Signatures are less than minimum required"
         );
+        bytes32 hashedMessage = keccak256(
+            abi.encodePacked(owner, _msgSender(), _contract)
+        );
+        address[] memory signers = _verifySigners(hashedMessage, signatures);
         uint256 assetIndex = _findERC20AssetIndex(owner, _contract);
         require(
             assetIndex < userAssets[owner].erc20Assets.length,
@@ -919,7 +928,8 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
             owner,
             _msgSender(),
             _contract,
-            dueAmount
+            dueAmount,
+            signers
         );
     }
 
@@ -1033,9 +1043,39 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
 
     function setVaultFactory(address _vaultFactory)
         external
-        onlyRole(LEGACY_ADMIN)
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
         vaultFactory = ILegacyVaultFactory(_vaultFactory);
+    }
+
+    function setMinSignature(uint16 _minAdminSignature)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        minAdminSignature = _minAdminSignature;
+    }
+
+    function _verifySigners(bytes32 hashedMessage, bytes[] calldata signatures)
+        internal
+        view
+        returns (address[] memory)
+    {
+        address[] memory signers = new address[](signatures.length);
+        for (uint i = 0; i < signatures.length; i++) {
+            address signer = _verifySignature(hashedMessage, signatures[i]);
+            require(
+                hasRole(LEGACY_ADMIN, signer),
+                "LegacyAssetManager: Unauthorized signature"
+            );
+            signers[i] = signer;
+            for (uint j = signers.length - 1; j != 0; j--) {
+                require(
+                    signers[j] != signers[j - 1],
+                    "LegacyAssetManager: Duplicate signature not allowed"
+                );
+            }
+        }
+        return signers;
     }
 
     function _verifySignature(bytes32 _hashedMessage, bytes calldata signature)
