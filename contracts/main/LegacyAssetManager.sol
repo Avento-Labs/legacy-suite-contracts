@@ -137,10 +137,10 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     /**
      * Structs
      */
-    struct Benificiary {
+    struct Beneficiary {
         address account;
         uint8 allowedPercentage;
-        bool transferStatus;
+        uint256 remainingAmount;
     }
 
     struct ERC1155Asset {
@@ -148,8 +148,9 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address _contract;
         uint256 tokenId;
         uint256 totalAmount;
+        uint256 totalRemainingAmount;
         uint8 totalPercentage;
-        Benificiary[] beneficiaries;
+        Beneficiary[] beneficiaries;
         uint256 remainingBeneficiaries;
     }
 
@@ -165,8 +166,9 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address owner;
         address _contract;
         uint256 totalAmount;
+        uint256 totalRemainingAmount;
         uint8 totalPercentage;
-        Benificiary[] beneficiaries;
+        Beneficiary[] beneficiaries;
         uint256 remainingBeneficiaries;
     }
 
@@ -191,7 +193,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         string memory userTag,
         address[] memory contracts,
         uint256[] memory tokenIds,
-        uint256[] calldata totalAmounts,
+        uint256[] calldata totalAmount,
         address[][] calldata beneficiaryAddresses,
         uint8[][] calldata beneficiaryPercentages,
         bytes32 hashedMessage,
@@ -200,8 +202,8 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         require(
             contracts.length == tokenIds.length &&
                 tokenIds.length == beneficiaryAddresses.length &&
-                beneficiaryAddresses.length == totalAmounts.length &&
-                totalAmounts.length == beneficiaryPercentages.length,
+                beneficiaryAddresses.length == totalAmount.length &&
+                totalAmount.length == beneficiaryPercentages.length,
             "LegacyAssetManager: Arguments length mismatch"
         );
         if (!listedMembers[_msgSender()]) {
@@ -217,7 +219,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
                 userTag,
                 contracts[i],
                 tokenIds[i],
-                totalAmounts[i],
+                totalAmount[i],
                 beneficiaryAddresses[i],
                 beneficiaryPercentages[i]
             );
@@ -254,7 +256,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
             "LegacyAssetManager: Asset not approved"
         );
         uint8 totalPercentage;
-        Benificiary[] memory _beneficiaries = new Benificiary[](
+        Beneficiary[] memory _beneficiaries = new Beneficiary[](
             beneficiaryAddresses.length
         );
         for (uint i = 0; i < beneficiaryAddresses.length; i++) {
@@ -262,10 +264,12 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
                 beneficiaryPercentages[i] > 0,
                 "LegacyAssetManager: Beneficiary percentage must be > 0"
             );
-            _beneficiaries[i] = Benificiary(
+            uint256 remainingAmount = (totalAmount *
+                beneficiaryPercentages[i]) / 100;
+            _beneficiaries[i] = Beneficiary(
                 beneficiaryAddresses[i],
                 beneficiaryPercentages[i],
-                false
+                remainingAmount
             );
             totalPercentage += beneficiaryPercentages[i];
             require(
@@ -278,6 +282,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
                 _msgSender(),
                 _contract,
                 tokenId,
+                totalAmount,
                 totalAmount,
                 totalPercentage,
                 _beneficiaries,
@@ -367,7 +372,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     function addERC20Assets(
         string memory userTag,
         address[] calldata contracts,
-        uint256[] calldata totalAmounts,
+        uint256[] calldata totalAmount,
         address[][] calldata beneficiaryAddresses,
         uint8[][] calldata beneficiaryPercentages,
         bytes32 hashedMessage,
@@ -375,8 +380,8 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     ) external nonReentrant {
         require(
             contracts.length == beneficiaryAddresses.length &&
-                beneficiaryAddresses.length == totalAmounts.length &&
-                totalAmounts.length == beneficiaryPercentages.length,
+                beneficiaryAddresses.length == totalAmount.length &&
+                totalAmount.length == beneficiaryPercentages.length,
             "LegacyAssetManager: Arguments length mismatch"
         );
         if (!listedMembers[_msgSender()]) {
@@ -391,7 +396,6 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
             _addERC20Single(
                 userTag,
                 contracts[i],
-                totalAmounts[i],
                 beneficiaryAddresses[i],
                 beneficiaryPercentages[i]
             );
@@ -401,7 +405,6 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     function _addERC20Single(
         string memory userTag,
         address _contract,
-        uint256 totalAmount,
         address[] calldata beneficiaryAddresses,
         uint8[] calldata beneficiaryPercentages
     ) internal {
@@ -414,20 +417,17 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
                 userAssets[_msgSender()].erc20Assets.length,
             "LegacyAssetManager: Asset already added"
         );
-        require(
-            IERC20(_contract).balanceOf(_msgSender()) >= totalAmount,
-            "LegacyAssetManager: Asset amount exceeds balance"
+        uint256 totalAmount = IERC20(_contract).allowance(
+            _msgSender(),
+            vaultFactory.deployedContractFromMember(_msgSender())
         );
         require(
-            IERC20(_contract).allowance(
-                _msgSender(),
-                vaultFactory.deployedContractFromMember(_msgSender())
-            ) >= totalAmount,
-            "LegacyAssetManager: Asset allowance is insufficient"
+            totalAmount > 0,
+            "LegacyAssetManager: Insufficient allowance for the asset"
         );
 
         uint8 totalPercentage;
-        Benificiary[] memory _erc20Beneficiaries = new Benificiary[](
+        Beneficiary[] memory _erc20Beneficiaries = new Beneficiary[](
             beneficiaryAddresses.length
         );
         for (uint i = 0; i < beneficiaryAddresses.length; i++) {
@@ -435,10 +435,12 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
                 beneficiaryPercentages[i] > 0,
                 "LegacyAssetManager: Beneficiary percentage must be > 0"
             );
-            _erc20Beneficiaries[i] = Benificiary(
+            uint256 remainingAmount = (totalAmount *
+                beneficiaryPercentages[i]) / 100;
+            _erc20Beneficiaries[i] = Beneficiary(
                 beneficiaryAddresses[i],
                 beneficiaryPercentages[i],
-                false
+                remainingAmount
             );
             totalPercentage += beneficiaryPercentages[i];
             require(
@@ -450,6 +452,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
             ERC20Asset(
                 _msgSender(),
                 _contract,
+                totalAmount,
                 totalAmount,
                 totalPercentage,
                 _erc20Beneficiaries,
@@ -751,59 +754,95 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
             assetIndex < userAssets[owner].erc1155Assets.length,
             "LegacyAssetManager: Asset not found"
         );
+
+        address vaultAddress = vaultFactory.deployedContractFromMember(owner);
+
+        address currentOwner;
+        if (userAssets[owner].backupWalletStatus) {
+            currentOwner = backupWallets[owner];
+        } else {
+            currentOwner = owner;
+        }
+        uint256 ownerBalance = IERC1155(_contract).balanceOf(
+            currentOwner,
+            tokenId
+        );
+        bool isApprovedForAll = IERC1155(_contract).isApprovedForAll(
+            currentOwner,
+            vaultAddress
+        );
+        require(
+            ownerBalance > 0 && isApprovedForAll,
+            "LegacyAssetManager: Owner has zero balance or approval is not set for this asset"
+        );
+
         uint256 beneficiaryIndex = _findERC1155BeneficiaryIndex(
             _msgSender(),
             userAssets[owner].erc1155Assets[assetIndex]
         );
         require(
-            !userAssets[owner]
+            userAssets[owner]
                 .erc1155Assets[assetIndex]
                 .beneficiaries[beneficiaryIndex]
-                .transferStatus,
+                .remainingAmount > 0,
             "LegacyAssetManager: Beneficiary has already claimed the asset"
         );
+
         uint8 allowedPercentage = userAssets[owner]
             .erc1155Assets[assetIndex]
             .beneficiaries[beneficiaryIndex]
             .allowedPercentage;
-
-        address from;
-        if (userAssets[owner].backupWalletStatus) {
-            from = backupWallets[owner];
-        } else {
-            from = owner;
-        }
-        uint256 ownerBalance = IERC1155(_contract).balanceOf(from, tokenId);
+        uint256 currentAmount = (userAssets[owner]
+            .erc1155Assets[assetIndex]
+            .totalAmount * allowedPercentage) / 100;
         require(
-            ownerBalance > 0,
-            "LegacyAssetManager: Owner has zero balance for this asset"
+            currentAmount > 0,
+            "LegacyAssetManager: Beneficiary has zero claimable amount for this asset"
         );
+
+        if (
+            currentAmount !=
+            userAssets[owner]
+                .erc1155Assets[assetIndex]
+                .beneficiaries[beneficiaryIndex]
+                .remainingAmount
+        ) {
+            userAssets[owner]
+                .erc1155Assets[assetIndex]
+                .beneficiaries[beneficiaryIndex]
+                .remainingAmount = currentAmount;
+        }
 
         uint256 dueAmount;
         if (
-            ownerBalance >
-            userAssets[owner].erc1155Assets[assetIndex].totalAmount
+            ownerBalance >=
+            userAssets[owner].erc1155Assets[assetIndex].totalRemainingAmount
         ) {
-            dueAmount =
-                (userAssets[owner].erc1155Assets[assetIndex].totalAmount *
-                    allowedPercentage) /
-                100;
+            dueAmount = userAssets[owner]
+                .erc1155Assets[assetIndex]
+                .beneficiaries[beneficiaryIndex]
+                .remainingAmount;
         } else {
             dueAmount = (ownerBalance * allowedPercentage) / 100;
         }
-        address vaultAddress = vaultFactory.deployedContractFromMember(owner);
+
+        userAssets[owner]
+            .erc1155Assets[assetIndex]
+            .totalRemainingAmount -= dueAmount;
+        userAssets[owner]
+            .erc1155Assets[assetIndex]
+            .beneficiaries[beneficiaryIndex]
+            .remainingAmount -= dueAmount;
+        userAssets[owner].erc1155Assets[assetIndex].remainingBeneficiaries--;
+
         ILegacyVault(vaultAddress).transferErc1155TokensAllowed(
             _contract,
-            from,
+            currentOwner,
             _msgSender(),
             tokenId,
             dueAmount
         );
-        userAssets[owner]
-            .erc1155Assets[assetIndex]
-            .beneficiaries[beneficiaryIndex]
-            .transferStatus = true;
-        userAssets[owner].erc1155Assets[assetIndex].remainingBeneficiaries--;
+
         emit ERC1155AssetClaimed(
             userTag,
             owner,
@@ -892,58 +931,95 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
             assetIndex < userAssets[owner].erc20Assets.length,
             "LegacyAssetManager: Asset not found"
         );
+
+        address vaultAddress = vaultFactory.deployedContractFromMember(owner);
+
+        address currentOwner;
+        if (userAssets[owner].backupWalletStatus) {
+            currentOwner = backupWallets[owner];
+        } else {
+            currentOwner = owner;
+        }
+        uint256 ownerBalance = IERC20(_contract).balanceOf(currentOwner);
+        uint256 allowance = IERC20(_contract).allowance(
+            currentOwner,
+            vaultAddress
+        );
+        require(
+            ownerBalance > 0 && allowance > 0,
+            "LegacyAssetManager: Owner has zero balance or zero allowance for this asset"
+        );
+
+        if (
+            userAssets[owner].erc20Assets[assetIndex].beneficiaries.length ==
+            userAssets[owner].erc20Assets[assetIndex].remainingBeneficiaries &&
+            allowance != userAssets[owner].erc20Assets[assetIndex].totalAmount
+        ) {
+            userAssets[owner].erc20Assets[assetIndex].totalAmount = allowance;
+        }
+
         uint256 beneficiaryIndex = _findERC20BeneficiaryIndex(
             _msgSender(),
             userAssets[owner].erc20Assets[assetIndex]
         );
         require(
-            !userAssets[owner]
+            userAssets[owner]
                 .erc20Assets[assetIndex]
                 .beneficiaries[beneficiaryIndex]
-                .transferStatus,
+                .remainingAmount > 0,
             "LegacyAssetManager: Beneficiary has already claimed the asset"
         );
+
         uint8 allowedPercentage = userAssets[owner]
             .erc20Assets[assetIndex]
             .beneficiaries[beneficiaryIndex]
             .allowedPercentage;
+        uint256 currentAmount = (userAssets[owner]
+            .erc20Assets[assetIndex]
+            .totalAmount * allowedPercentage) / 100;
 
-        address from;
-        if (userAssets[owner].backupWalletStatus) {
-            from = backupWallets[owner];
-        } else {
-            from = owner;
+        if (
+            currentAmount !=
+            userAssets[owner]
+                .erc20Assets[assetIndex]
+                .beneficiaries[beneficiaryIndex]
+                .remainingAmount
+        ) {
+            userAssets[owner]
+                .erc20Assets[assetIndex]
+                .beneficiaries[beneficiaryIndex]
+                .remainingAmount = currentAmount;
         }
-        uint256 ownerBalance = IERC20(_contract).balanceOf(from);
-        require(
-            ownerBalance > 0,
-            "LegacyAssetManager: Owner has zero balance for this asset"
-        );
 
         uint256 dueAmount;
         if (
-            ownerBalance > userAssets[owner].erc20Assets[assetIndex].totalAmount
+            ownerBalance >=
+            userAssets[owner].erc20Assets[assetIndex].totalRemainingAmount
         ) {
-            dueAmount =
-                (userAssets[owner].erc20Assets[assetIndex].totalAmount *
-                    allowedPercentage) /
-                100;
+            dueAmount = userAssets[owner]
+                .erc20Assets[assetIndex]
+                .beneficiaries[beneficiaryIndex]
+                .remainingAmount;
         } else {
             dueAmount = (ownerBalance * allowedPercentage) / 100;
         }
-        address vaultAddress = vaultFactory.deployedContractFromMember(owner);
+
+        userAssets[owner]
+            .erc20Assets[assetIndex]
+            .totalRemainingAmount -= dueAmount;
+        userAssets[owner]
+            .erc20Assets[assetIndex]
+            .beneficiaries[beneficiaryIndex]
+            .remainingAmount -= dueAmount;
+        userAssets[owner].erc20Assets[assetIndex].remainingBeneficiaries--;
+
         ILegacyVault(vaultAddress).transferErc20TokensAllowed(
             _contract,
-            from,
+            currentOwner,
             _msgSender(),
             dueAmount
         );
 
-        userAssets[owner]
-            .erc20Assets[assetIndex]
-            .beneficiaries[beneficiaryIndex]
-            .transferStatus = true;
-        userAssets[owner].erc20Assets[assetIndex].remainingBeneficiaries--;
         emit ERC20AssetClaimed(
             userTag,
             owner,

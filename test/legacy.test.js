@@ -95,7 +95,7 @@ async function deploy() {
     await ownerERC1155.mintBatch(
         owner.address,
         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
         "0x01"
     );
     await ownerERC1155.setApprovalForAll(ownerVaultAddress, true);
@@ -453,7 +453,7 @@ describe("LegacyAssetManager", async function () {
             await ownerAssetManager.addERC1155Assets(
                 userTag,
                 [ERC1155.address],
-                [1],
+                [2],
                 [1],
                 [[beneficiary.address]],
                 [[100]],
@@ -463,7 +463,7 @@ describe("LegacyAssetManager", async function () {
             const claimHashedMessage = ethers.utils.arrayify(
                 ethers.utils.solidityKeccak256(
                     ["address", "address", "address", "uint256"],
-                    [owner.address, beneficiary.address, ERC1155.address, 1]
+                    [owner.address, beneficiary.address, ERC1155.address, 2]
                 )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
@@ -471,7 +471,7 @@ describe("LegacyAssetManager", async function () {
                 userTag,
                 owner.address,
                 ERC1155.address,
-                1,
+                2,
                 [claimSignature]
             );
             await expect(
@@ -479,7 +479,7 @@ describe("LegacyAssetManager", async function () {
                     userTag,
                     owner.address,
                     ERC1155.address,
-                    1,
+                    2,
                     [claimSignature]
                 )
             ).to.be.revertedWith(
@@ -539,7 +539,7 @@ describe("LegacyAssetManager", async function () {
                     [claimSignature]
                 )
             ).to.be.revertedWith(
-                "LegacyAssetManager: Owner has zero balance for this asset"
+                "LegacyAssetManager: Owner has zero balance or approval is not set for this asset"
             );
         });
         it("Should fail to claim single ERC1155 Asset with duplicate signature", async function () {
@@ -1045,55 +1045,55 @@ describe("LegacyAssetManager", async function () {
                     signature
                 )
             ).to.be.revertedWith(
-                "LegacyAssetManager: Asset amount exceeds balance"
+                "LegacyAssetManager: Insufficient allowance for the asset"
             );
         });
-        it("Should fail to add single ERC20 asset when the allowance is insufficient", async () => {
-            const {
-                admin,
-                authorizer,
-                owner,
-                beneficiary,
-                ownerAssetManager,
-                ERC20,
-                ownerVault,
-                ownerERC20,
-                beneficiary1,
-                beneficiary2,
-            } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const amount = ethers.utils.parseEther("101");
-            await ownerERC20.approve(
-                ownerVault.address,
-                ethers.utils.parseEther("100")
-            );
-            const beneficiaries = [
-                beneficiary.address,
-                beneficiary1.address,
-                beneficiary2.address,
-            ];
-            const percentages = [33, 33, 34];
-            const message = ethers.BigNumber.from(
-                ethers.utils.randomBytes(4)
-            ).toString();
-            const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
-            );
-            const signature = await authorizer.signMessage(hashedMessage);
-            await expect(
-                ownerAssetManager.addERC20Assets(
-                    userTag,
-                    [ERC20.address],
-                    [amount],
-                    [beneficiaries],
-                    [percentages],
-                    hashedMessage,
-                    signature
-                )
-            ).to.be.revertedWith(
-                "LegacyAssetManager: Asset allowance is insufficient"
-            );
-        });
+        // it("Should fail to add single ERC20 asset when the allowance is insufficient", async () => {
+        //     const {
+        //         admin,
+        //         authorizer,
+        //         owner,
+        //         beneficiary,
+        //         ownerAssetManager,
+        //         ERC20,
+        //         ownerVault,
+        //         ownerERC20,
+        //         beneficiary1,
+        //         beneficiary2,
+        //     } = await deploy();
+        //     const userTag = ethers.utils.hashMessage(owner.address);
+        //     const amount = ethers.utils.parseEther("101");
+        //     await ownerERC20.approve(
+        //         ownerVault.address,
+        //         ethers.utils.parseEther("100")
+        //     );
+        //     const beneficiaries = [
+        //         beneficiary.address,
+        //         beneficiary1.address,
+        //         beneficiary2.address,
+        //     ];
+        //     const percentages = [33, 33, 34];
+        //     const message = ethers.BigNumber.from(
+        //         ethers.utils.randomBytes(4)
+        //     ).toString();
+        //     const hashedMessage = ethers.utils.arrayify(
+        //         ethers.utils.hashMessage(message)
+        //     );
+        //     const signature = await authorizer.signMessage(hashedMessage);
+        //     await expect(
+        //         ownerAssetManager.addERC20Assets(
+        //             userTag,
+        //             [ERC20.address],
+        //             [amount],
+        //             [beneficiaries],
+        //             [percentages],
+        //             hashedMessage,
+        //             signature
+        //         )
+        //     ).to.be.revertedWith(
+        //         "LegacyAssetManager: Asset allowance is insufficient"
+        //     );
+        // });
         it("Should fail to add single ERC20 asset when percentages exceed 100", async () => {
             const {
                 admin,
@@ -1335,7 +1335,7 @@ describe("LegacyAssetManager", async function () {
                 )
             ).to.be.revertedWith("LegacyAssetManager: Beneficiary not found");
         });
-        it("Should fail to claim single ERC20 asset by non beneficiary", async () => {
+        it("Should fail to claim single ERC20 asset when owner has zero balance or zero allowance for this asset", async () => {
             const {
                 admin,
                 authorizer,
@@ -1397,7 +1397,7 @@ describe("LegacyAssetManager", async function () {
                     [claimSignature]
                 )
             ).to.be.revertedWith(
-                "LegacyAssetManager: Owner has zero balance for this asset"
+                "LegacyAssetManager: Owner has zero balance or zero allowance for this asset"
             );
         });
     });
