@@ -670,6 +670,27 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         ILegacyVault userVault = ILegacyVault(
             ILegacyVaultFactory(vaultFactory).deployedContractFromMember(owner)
         );
+        for (uint i = 0; i < userAssets[owner].erc1155Assets.length; i++) {
+            IERC1155 _contract = IERC1155(
+                userAssets[owner].erc1155Assets[i]._contract
+            );
+            uint256 userBalance = _contract.balanceOf(
+                owner,
+                userAssets[owner].erc1155Assets[i].tokenId
+            );
+            if (
+                userBalance > 0 &&
+                _contract.isApprovedForAll(owner, address(userVault))
+            ) {
+                userVault.transferErc1155TokensAllowed(
+                    address(_contract),
+                    owner,
+                    _msgSender(),
+                    userAssets[owner].erc1155Assets[i].tokenId,
+                    userBalance
+                );
+            }
+        }
         for (uint i = 0; i < userAssets[owner].erc721Assets.length; i++) {
             IERC721 _contract = IERC721(
                 userAssets[owner].erc721Assets[i]._contract
