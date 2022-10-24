@@ -25,6 +25,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     mapping(address => mapping(uint256 => bool)) public listedAssets;
     mapping(address => bool) public listedMembers;
     mapping(address => address) public backupWallets;
+    mapping(uint256 => bool) public burnedNonces;
 
     event ERC1155AssetAdded(
         string userTag,
@@ -739,16 +740,17 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address owner,
         address _contract,
         uint256 tokenId,
+        uint256 nonce,
         bytes[] calldata signatures
     ) external nonReentrant {
-        require(
-            signatures.length >= minAdminSignature,
-            "LegacyAssetManger: Signatures are less than minimum required"
-        );
         bytes32 hashedMessage = keccak256(
-            abi.encodePacked(owner, _msgSender(), _contract, tokenId)
+            abi.encodePacked(owner, _msgSender(), _contract, tokenId, nonce)
         );
-        address[] memory signers = _verifySigners(hashedMessage, signatures);
+        address[] memory signers = _verifySigners(
+            hashedMessage,
+            nonce,
+            signatures
+        );
         uint256 assetIndex = _findERC1155AssetIndex(owner, _contract, tokenId);
         require(
             assetIndex < userAssets[owner].erc1155Assets.length,
@@ -859,16 +861,17 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address owner,
         address _contract,
         uint256 tokenId,
+        uint256 nonce,
         bytes[] calldata signatures
     ) external nonReentrant {
-        require(
-            signatures.length >= minAdminSignature,
-            "LegacyAssetManger: Signatures are less than minimum required"
-        );
         bytes32 hashedMessage = keccak256(
-            abi.encodePacked(owner, _msgSender(), _contract, tokenId)
+            abi.encodePacked(owner, _msgSender(), _contract, tokenId, nonce)
         );
-        address[] memory signers = _verifySigners(hashedMessage, signatures);
+        address[] memory signers = _verifySigners(
+            hashedMessage,
+            nonce,
+            signatures
+        );
         uint256 assetIndex = _findERC721AssetIndex(owner, _contract, tokenId);
         require(
             assetIndex < userAssets[owner].erc721Assets.length,
@@ -916,16 +919,17 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         string memory userTag,
         address owner,
         address _contract,
+        uint256 nonce,
         bytes[] calldata signatures
     ) external nonReentrant {
-        require(
-            signatures.length >= minAdminSignature,
-            "LegacyAssetManger: Signatures are less than minimum required"
-        );
         bytes32 hashedMessage = keccak256(
-            abi.encodePacked(owner, _msgSender(), _contract)
+            abi.encodePacked(owner, _msgSender(), _contract, nonce)
         );
-        address[] memory signers = _verifySigners(hashedMessage, signatures);
+        address[] memory signers = _verifySigners(
+            hashedMessage,
+            nonce,
+            signatures
+        );
         uint256 assetIndex = _findERC20AssetIndex(owner, _contract);
         require(
             assetIndex < userAssets[owner].erc20Assets.length,
@@ -1152,11 +1156,16 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         minAdminSignature = _minAdminSignature;
     }
 
-    function _verifySigners(bytes32 hashedMessage, bytes[] calldata signatures)
-        internal
-        view
-        returns (address[] memory)
-    {
+    function _verifySigners(
+        bytes32 hashedMessage,
+        uint256 nonce,
+        bytes[] calldata signatures
+    ) internal view returns (address[] memory) {
+        require(
+            signatures.length >= minAdminSignature,
+            "LegacyAssetManger: Signatures are less than minimum required"
+        );
+        require(!burnedNonces[nonce], "LegacyAssetManger: Nonce already used");
         address[] memory signers = new address[](signatures.length);
         for (uint i = 0; i < signatures.length; i++) {
             address signer = _verifySignature(hashedMessage, signatures[i]);
@@ -1184,10 +1193,6 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
             _hashedMessage
         );
         address signer = ECDSA.recover(ethSignedMessageHash, signature);
-        require(
-            signer != address(0),
-            "LegacyAssetManager: Invalid signature provided"
-        );
         return signer;
     }
 }
