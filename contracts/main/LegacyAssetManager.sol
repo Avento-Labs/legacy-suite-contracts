@@ -1160,7 +1160,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         bytes32 hashedMessage,
         uint256 nonce,
         bytes[] calldata signatures
-    ) internal view returns (address[] memory) {
+    ) internal returns (address[] memory) {
         require(
             signatures.length >= minAdminSignature,
             "LegacyAssetManger: Signatures are less than minimum required"
@@ -1181,6 +1181,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
                 );
             }
         }
+        burnedNonces[nonce] = true;
         return signers;
     }
 
