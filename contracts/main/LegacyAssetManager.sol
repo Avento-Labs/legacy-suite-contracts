@@ -191,13 +191,13 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function addERC1155Assets(
-        string memory userTag,
+        string calldata userTag,
         address[] memory contracts,
         uint256[] memory tokenIds,
         uint256[] calldata totalAmount,
         address[][] calldata beneficiaryAddresses,
         uint8[][] calldata beneficiaryPercentages,
-        bytes32 hashedMessage,
+        uint256 nonce,
         bytes calldata signature
     ) external nonReentrant {
         require(
@@ -207,14 +207,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
                 totalAmount.length == beneficiaryPercentages.length,
             "LegacyAssetManager: Arguments length mismatch"
         );
-        if (!listedMembers[_msgSender()]) {
-            address signer = _verifySignature(hashedMessage, signature);
-            require(
-                hasRole(ASSET_AUTHORIZER, signer),
-                "LegacyAssetManager: Unauthorized signature"
-            );
-            listedMembers[_msgSender()] = true;
-        }
+        _authorizeAsset(userTag, nonce, signature);
         for (uint i = 0; i < contracts.length; i++) {
             _addERC1155Single(
                 userTag,
@@ -304,11 +297,11 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function addERC721Assets(
-        string memory userTag,
+        string calldata userTag,
         address[] calldata _contracts,
         uint256[] calldata tokenIds,
         address[] calldata beneficiaries,
-        bytes32 hashedMessage,
+        uint256 nonce,
         bytes calldata signature
     ) external nonReentrant {
         require(
@@ -316,14 +309,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
                 tokenIds.length == beneficiaries.length,
             "LegacyAssetManager: Arguments length mismatch"
         );
-        if (!listedMembers[_msgSender()]) {
-            address signer = _verifySignature(hashedMessage, signature);
-            require(
-                hasRole(ASSET_AUTHORIZER, signer),
-                "LegacyAssetManager: Unauthorized signature"
-            );
-            listedMembers[_msgSender()] = true;
-        }
+        _authorizeAsset(userTag, nonce, signature);
         for (uint i = 0; i < tokenIds.length; i++) {
             _addERC721Single(
                 userTag,
@@ -371,28 +357,19 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function addERC20Assets(
-        string memory userTag,
+        string calldata userTag,
         address[] calldata contracts,
-        uint256[] calldata totalAmount,
         address[][] calldata beneficiaryAddresses,
         uint8[][] calldata beneficiaryPercentages,
-        bytes32 hashedMessage,
+        uint256 nonce,
         bytes calldata signature
     ) external nonReentrant {
         require(
             contracts.length == beneficiaryAddresses.length &&
-                beneficiaryAddresses.length == totalAmount.length &&
-                totalAmount.length == beneficiaryPercentages.length,
+                beneficiaryAddresses.length == beneficiaryPercentages.length,
             "LegacyAssetManager: Arguments length mismatch"
         );
-        if (!listedMembers[_msgSender()]) {
-            address signer = _verifySignature(hashedMessage, signature);
-            require(
-                hasRole(ASSET_AUTHORIZER, signer),
-                "LegacyAssetManager: Unauthorized signature"
-            );
-            listedMembers[_msgSender()] = true;
-        }
+        _authorizeAsset(userTag, nonce, signature);
         for (uint i = 0; i < contracts.length; i++) {
             _addERC20Single(
                 userTag,
@@ -1156,6 +1133,29 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         minAdminSignature = _minAdminSignature;
     }
 
+    function _authorizeAsset(
+        string calldata userTag,
+        uint256 nonce,
+        bytes calldata signature
+    ) internal {
+        if (!listedMembers[_msgSender()]) {
+            require(
+                !burnedNonces[nonce],
+                "LegacyAssetManger: Nonce already used"
+            );
+            bytes32 hashedMessage = keccak256(
+                abi.encodePacked(userTag, _msgSender(), nonce)
+            );
+            address signer = _verifySignature(hashedMessage, signature);
+            require(
+                hasRole(ASSET_AUTHORIZER, signer),
+                "LegacyAssetManager: Unauthorized signature"
+            );
+            burnedNonces[nonce] = true;
+            listedMembers[_msgSender()] = true;
+        }
+    }
+
     function _verifySigners(
         bytes32 hashedMessage,
         uint256 nonce,
@@ -1193,7 +1193,6 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(
             _hashedMessage
         );
-        address signer = ECDSA.recover(ethSignedMessageHash, signature);
-        return signer;
+        return ECDSA.recover(ethSignedMessageHash, signature);
     }
 }

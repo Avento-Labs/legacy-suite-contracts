@@ -143,29 +143,32 @@ describe("LegacyAssetManager", async function () {
                 ERC1155,
                 beneficiary,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const message = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
             const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
             const signature = await authorizer.signMessage(hashedMessage);
             await expect(
                 ownerAssetManager.addERC1155Assets(
-                    userTag,
+                    userId,
                     [ERC1155.address],
                     [1],
                     [1],
                     [[beneficiary.address]],
                     [[100]],
-                    hashedMessage,
+                    nonce,
                     signature
                 )
             )
                 .to.emit(ownerAssetManager, "ERC1155AssetAdded")
                 .withArgs(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC1155.address,
                     1,
@@ -185,33 +188,36 @@ describe("LegacyAssetManager", async function () {
                 ERC1155,
                 beneficiary,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const message = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
             const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
             const signature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC1155Assets(
-                userTag,
+                userId,
                 [ERC1155.address],
                 [1],
                 [1],
                 [[beneficiary.address]],
                 [[100]],
-                hashedMessage,
+                nonce,
                 signature
             );
             await expect(
                 ownerAssetManager.addERC1155Assets(
-                    userTag,
+                    userId,
                     [ERC1155.address],
                     [1],
                     [1],
                     [[beneficiary.address]],
                     [[100]],
-                    hashedMessage,
+                    nonce,
                     signature
                 )
             ).to.be.revertedWith("LegacyAssetManager: Asset already added");
@@ -226,23 +232,26 @@ describe("LegacyAssetManager", async function () {
                 ERC1155,
                 beneficiary,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const message = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
             const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
             const signature = await authorizer.signMessage(hashedMessage);
             await expect(
                 ownerAssetManager.addERC1155Assets(
-                    userTag,
+                    userId,
                     [ERC1155.address],
                     [1],
                     [2],
                     [[beneficiary.address]],
                     [[100]],
-                    hashedMessage,
+                    nonce,
                     signature
                 )
             ).to.be.revertedWith(
@@ -262,23 +271,26 @@ describe("LegacyAssetManager", async function () {
                 beneficiary,
             } = await deploy();
             await ownerERC1155.setApprovalForAll(ownerVault.address, false);
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const message = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
             const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
             const signature = await authorizer.signMessage(hashedMessage);
             await expect(
                 ownerAssetManager.addERC1155Assets(
-                    userTag,
+                    userId,
                     [ERC1155.address],
                     [1],
                     [1],
                     [[beneficiary.address]],
                     [[100]],
-                    hashedMessage,
+                    nonce,
                     signature
                 )
             ).to.be.revertedWith("LegacyAssetManager: Asset not approved");
@@ -296,44 +308,54 @@ describe("LegacyAssetManager", async function () {
                 beneficiary,
                 beneficiaryAssetManager,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const addMessage = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const addHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(addMessage)
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
-            const addSignature = await authorizer.signMessage(addHashedMessage);
+            const addSignature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC1155Assets(
-                userTag,
+                userId,
                 [ERC1155.address],
                 [1],
                 [1],
                 [[beneficiary.address]],
                 [[100]],
-                addHashedMessage,
+                nonce,
                 addSignature
             );
             const claimHashedMessage = ethers.utils.arrayify(
                 ethers.utils.solidityKeccak256(
-                    ["address", "address", "address", "uint256"],
-                    [owner.address, beneficiary.address, ERC1155.address, 1]
+                    ["address", "address", "address", "uint256", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC1155.address,
+                        1,
+                        nonce + 1,
+                    ]
                 )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
 
             await expect(
                 beneficiaryAssetManager.claimERC1155Asset(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC1155.address,
                     1,
+                    nonce + 1,
                     [claimSignature]
                 )
             )
                 .to.emit(beneficiaryAssetManager, "ERC1155AssetClaimed") // transfer from minter to redeemer
                 .withArgs(
-                    userTag,
+                    userId,
                     owner.address,
                     beneficiary.address,
                     ERC1155.address,
@@ -352,37 +374,47 @@ describe("LegacyAssetManager", async function () {
                 beneficiary,
                 beneficiaryAssetManager,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const addMessage = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const addHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(addMessage)
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
-            const addSignature = await authorizer.signMessage(addHashedMessage);
+            const addSignature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC1155Assets(
-                userTag,
+                userId,
                 [ERC1155.address],
                 [1],
                 [1],
                 [[beneficiary.address]],
                 [[100]],
-                addHashedMessage,
+                nonce,
                 addSignature
             );
             const claimHashedMessage = ethers.utils.arrayify(
                 ethers.utils.solidityKeccak256(
-                    ["address", "address", "address", "uint256"],
-                    [owner.address, beneficiary.address, ERC1155.address, 1]
+                    ["address", "address", "address", "uint256", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC1155.address,
+                        1,
+                        nonce + 1,
+                    ]
                 )
             );
             const claimSignature = await owner.signMessage(claimHashedMessage);
             await expect(
                 beneficiaryAssetManager.claimERC1155Asset(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC1155.address,
                     1,
+                    nonce + 1,
                     [claimSignature]
                 )
             ).to.be.revertedWith("LegacyAssetManager: Unauthorized signature");
@@ -397,37 +429,47 @@ describe("LegacyAssetManager", async function () {
                 beneficiary,
                 beneficiaryAssetManager,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const addMessage = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const addHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(addMessage)
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
-            const addSignature = await authorizer.signMessage(addHashedMessage);
+            const addSignature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC1155Assets(
-                userTag,
+                userId,
                 [ERC1155.address],
                 [1],
                 [1],
                 [[beneficiary.address]],
                 [[100]],
-                addHashedMessage,
+                nonce,
                 addSignature
             );
             const claimHashedMessage = ethers.utils.arrayify(
                 ethers.utils.solidityKeccak256(
-                    ["address", "address", "address", "uint256"],
-                    [owner.address, beneficiary.address, ERC1155.address, 2]
+                    ["address", "address", "address", "uint256", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC1155.address,
+                        2,
+                        nonce + 1,
+                    ]
                 )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
             await expect(
                 beneficiaryAssetManager.claimERC1155Asset(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC1155.address,
                     2,
+                    nonce + 1,
                     [claimSignature]
                 )
             ).to.be.revertedWith("LegacyAssetManager: Asset not found");
@@ -442,45 +484,71 @@ describe("LegacyAssetManager", async function () {
                 beneficiary,
                 beneficiaryAssetManager,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const addMessage = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const addHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(addMessage)
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
-            const addSignature = await authorizer.signMessage(addHashedMessage);
+            const addSignature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC1155Assets(
-                userTag,
+                userId,
                 [ERC1155.address],
                 [2],
                 [1],
                 [[beneficiary.address]],
                 [[100]],
-                addHashedMessage,
+                nonce,
                 addSignature
             );
             const claimHashedMessage = ethers.utils.arrayify(
                 ethers.utils.solidityKeccak256(
-                    ["address", "address", "address", "uint256"],
-                    [owner.address, beneficiary.address, ERC1155.address, 2]
+                    ["address", "address", "address", "uint256", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC1155.address,
+                        2,
+                        nonce + 1,
+                    ]
                 )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
             await beneficiaryAssetManager.claimERC1155Asset(
-                userTag,
+                userId,
                 owner.address,
                 ERC1155.address,
                 2,
+                nonce + 1,
                 [claimSignature]
+            );
+            const claimHashedMessage1 = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address", "uint256", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC1155.address,
+                        2,
+                        nonce + 2,
+                    ]
+                )
+            );
+            const claimSignature1 = await admin.signMessage(
+                claimHashedMessage1
             );
             await expect(
                 beneficiaryAssetManager.claimERC1155Asset(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC1155.address,
                     2,
-                    [claimSignature]
+                    nonce + 2,
+                    [claimSignature1]
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: Beneficiary has already claimed the asset"
@@ -498,28 +566,37 @@ describe("LegacyAssetManager", async function () {
                 beneficiary1,
                 beneficiaryAssetManager,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const addMessage = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const addHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(addMessage)
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
-            const addSignature = await authorizer.signMessage(addHashedMessage);
+            const addSignature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC1155Assets(
-                userTag,
+                userId,
                 [ERC1155.address],
                 [1],
                 [1],
                 [[beneficiary.address]],
                 [[100]],
-                addHashedMessage,
+                nonce,
                 addSignature
             );
             const claimHashedMessage = ethers.utils.arrayify(
                 ethers.utils.solidityKeccak256(
-                    ["address", "address", "address", "uint256"],
-                    [owner.address, beneficiary.address, ERC1155.address, 1]
+                    ["address", "address", "address", "uint256", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC1155.address,
+                        1,
+                        nonce + 1,
+                    ]
                 )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
@@ -532,10 +609,11 @@ describe("LegacyAssetManager", async function () {
             );
             await expect(
                 beneficiaryAssetManager.claimERC1155Asset(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC1155.address,
                     1,
+                    nonce + 1,
                     [claimSignature]
                 )
             ).to.be.revertedWith(
@@ -554,28 +632,37 @@ describe("LegacyAssetManager", async function () {
                 beneficiary1,
                 beneficiaryAssetManager,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const addMessage = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const addHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(addMessage)
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
-            const addSignature = await authorizer.signMessage(addHashedMessage);
+            const addSignature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC1155Assets(
-                userTag,
+                userId,
                 [ERC1155.address],
                 [1],
                 [1],
                 [[beneficiary.address]],
                 [[100]],
-                addHashedMessage,
+                nonce,
                 addSignature
             );
             const claimHashedMessage = ethers.utils.arrayify(
                 ethers.utils.solidityKeccak256(
-                    ["address", "address", "address", "uint256"],
-                    [owner.address, beneficiary.address, ERC1155.address, 1]
+                    ["address", "address", "address", "uint256", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC1155.address,
+                        1,
+                        nonce + 1,
+                    ]
                 )
             );
             const claimSignature1 = await admin.signMessage(claimHashedMessage);
@@ -589,10 +676,11 @@ describe("LegacyAssetManager", async function () {
             );
             await expect(
                 beneficiaryAssetManager.claimERC1155Asset(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC1155.address,
                     1,
+                    nonce + 1,
                     [claimSignature1, claimSignature2]
                 )
             ).to.be.revertedWith(
@@ -611,27 +699,30 @@ describe("LegacyAssetManager", async function () {
                 ERC721,
                 beneficiary,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const message = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
             const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
             const signature = await authorizer.signMessage(hashedMessage);
             await expect(
                 ownerAssetManager.addERC721Assets(
-                    userTag,
+                    userId,
                     [ERC721.address],
                     [1],
                     [beneficiary.address],
-                    hashedMessage,
+                    nonce,
                     signature
                 )
             )
                 .to.emit(ownerAssetManager, "ERC721AssetAdded")
                 .withArgs(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC721.address,
                     1,
@@ -647,30 +738,33 @@ describe("LegacyAssetManager", async function () {
                 ERC721,
                 beneficiary,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const message = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
             const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
             const signature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC721Assets(
-                userTag,
+                userId,
                 [ERC721.address],
                 [1],
                 [beneficiary.address],
-                hashedMessage,
+                nonce,
                 signature
             );
 
             await expect(
                 ownerAssetManager.addERC721Assets(
-                    userTag,
+                    userId,
                     [ERC721.address],
                     [1],
                     [beneficiary.address],
-                    hashedMessage,
+                    nonce,
                     signature
                 )
             ).to.revertedWith("LegacyAssetManager: Asset already added");
@@ -684,23 +778,26 @@ describe("LegacyAssetManager", async function () {
                 ERC721,
                 beneficiary,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const message = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
             const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
             const signature = await authorizer.signMessage(hashedMessage);
             await ERC721.mint(beneficiary.address, 11);
 
             await expect(
                 ownerAssetManager.addERC721Assets(
-                    userTag,
+                    userId,
                     [ERC721.address],
                     [11],
                     [beneficiary.address],
-                    hashedMessage,
+                    nonce,
                     signature
                 )
             ).to.revertedWith(
@@ -716,23 +813,26 @@ describe("LegacyAssetManager", async function () {
                 ERC721,
                 beneficiary,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const message = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
             const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
             const signature = await authorizer.signMessage(hashedMessage);
             await ERC721.mint(owner.address, 11);
 
             await expect(
                 ownerAssetManager.addERC721Assets(
-                    userTag,
+                    userId,
                     [ERC721.address],
                     [11],
                     [beneficiary.address],
-                    hashedMessage,
+                    nonce,
                     signature
                 )
             ).to.revertedWith("LegacyAssetManager: Asset not approved");
@@ -750,43 +850,53 @@ describe("LegacyAssetManager", async function () {
                 ownerAssetManager,
                 beneficiaryAssetManager,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const addMessage = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const addHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(addMessage)
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
-            const addSignature = await authorizer.signMessage(addHashedMessage);
+            const addSignature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC721Assets(
-                userTag,
+                userId,
                 [ERC721.address],
                 [1],
                 [beneficiary.address],
-                addHashedMessage,
+                nonce,
                 addSignature
             );
 
             const claimHashedMessage = ethers.utils.arrayify(
                 ethers.utils.solidityKeccak256(
-                    ["address", "address", "address", "uint256"],
-                    [owner.address, beneficiary.address, ERC721.address, 1]
+                    ["address", "address", "address", "uint256", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC721.address,
+                        1,
+                        nonce + 1,
+                    ]
                 )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
 
             await expect(
                 beneficiaryAssetManager.claimERC721Asset(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC721.address,
                     1,
+                    nonce + 1,
                     [claimSignature]
                 )
             )
                 .to.emit(beneficiaryAssetManager, "ERC721AssetClaimed") // transfer from minter to redeemer
                 .withArgs(
-                    userTag,
+                    userId,
                     owner.address,
                     beneficiary.address,
                     ERC721.address,
@@ -805,45 +915,73 @@ describe("LegacyAssetManager", async function () {
                 ownerAssetManager,
                 beneficiaryAssetManager,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const addMessage = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const addHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(addMessage)
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
-            const addSignature = await authorizer.signMessage(addHashedMessage);
+            const addSignature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC721Assets(
-                userTag,
+                userId,
                 [ERC721.address],
                 [1],
                 [beneficiary.address],
-                addHashedMessage,
+                nonce,
                 addSignature
             );
 
             const claimHashedMessage = ethers.utils.arrayify(
                 ethers.utils.solidityKeccak256(
-                    ["address", "address", "address", "uint256"],
-                    [owner.address, beneficiary.address, ERC721.address, 1]
+                    ["address", "address", "address", "uint256", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC721.address,
+                        1,
+                        nonce + 1,
+                    ]
                 )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
 
             await beneficiaryAssetManager.claimERC721Asset(
-                userTag,
+                userId,
                 owner.address,
                 ERC721.address,
                 1,
+                nonce + 1,
                 [claimSignature]
             );
+
+            const claimHashedMessage1 = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address", "uint256", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC721.address,
+                        1,
+                        nonce + 2,
+                    ]
+                )
+            );
+            const claimSignature1 = await admin.signMessage(
+                claimHashedMessage1
+            );
+
             await expect(
                 beneficiaryAssetManager.claimERC721Asset(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC721.address,
                     1,
-                    [claimSignature]
+                    nonce + 2,
+                    [claimSignature1]
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: Beneficiary has already claimed the asset"
@@ -860,37 +998,47 @@ describe("LegacyAssetManager", async function () {
                 beneficiaryAssetManager,
                 beneficiary1,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const addMessage = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const addHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(addMessage)
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
-            const addSignature = await authorizer.signMessage(addHashedMessage);
+            const addSignature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC721Assets(
-                userTag,
+                userId,
                 [ERC721.address],
                 [1],
                 [beneficiary1.address],
-                addHashedMessage,
+                nonce,
                 addSignature
             );
 
             const claimHashedMessage = ethers.utils.arrayify(
                 ethers.utils.solidityKeccak256(
-                    ["address", "address", "address", "uint256"],
-                    [owner.address, beneficiary.address, ERC721.address, 1]
+                    ["address", "address", "address", "uint256", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC721.address,
+                        1,
+                        nonce + 1,
+                    ]
                 )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
 
             await expect(
                 beneficiaryAssetManager.claimERC721Asset(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC721.address,
                     1,
+                    nonce + 1,
                     [claimSignature]
                 )
             ).to.be.revertedWith("LegacyAssetManager: Unauthorized claim call");
@@ -907,27 +1055,36 @@ describe("LegacyAssetManager", async function () {
                 beneficiaryAssetManager,
                 beneficiary1,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const addMessage = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const addHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(addMessage)
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
-            const addSignature = await authorizer.signMessage(addHashedMessage);
+            const addSignature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC721Assets(
-                userTag,
+                userId,
                 [ERC721.address],
                 [1],
                 [beneficiary.address],
-                addHashedMessage,
+                nonce,
                 addSignature
             );
 
             const claimHashedMessage = ethers.utils.arrayify(
                 ethers.utils.solidityKeccak256(
-                    ["address", "address", "address", "uint256"],
-                    [owner.address, beneficiary.address, ERC721.address, 1]
+                    ["address", "address", "address", "uint256", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC721.address,
+                        1,
+                        nonce + 1,
+                    ]
                 )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
@@ -939,10 +1096,11 @@ describe("LegacyAssetManager", async function () {
 
             await expect(
                 beneficiaryAssetManager.claimERC721Asset(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC721.address,
                     1,
+                    nonce + 1,
                     [claimSignature]
                 )
             ).to.be.revertedWith(
@@ -965,7 +1123,7 @@ describe("LegacyAssetManager", async function () {
                 beneficiary1,
                 beneficiary2,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
+            const userId = ethers.utils.hashMessage(owner.address);
             const amount = ethers.utils.parseEther("100");
             await ownerERC20.approve(
                 ownerVault.address,
@@ -977,27 +1135,30 @@ describe("LegacyAssetManager", async function () {
                 beneficiary2.address,
             ];
             const percentages = [33, 33, 34];
-            const message = ethers.BigNumber.from(
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
             const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
             const signature = await authorizer.signMessage(hashedMessage);
             await expect(
                 ownerAssetManager.addERC20Assets(
-                    userTag,
+                    userId,
                     [ERC20.address],
                     [amount],
                     [beneficiaries],
                     [percentages],
-                    hashedMessage,
+                    nonce,
                     signature
                 )
             )
                 .to.emit(ownerAssetManager, "ERC20AssetAdded")
                 .withArgs(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC20.address,
                     amount,
@@ -1017,7 +1178,7 @@ describe("LegacyAssetManager", async function () {
                 beneficiary1,
                 beneficiary2,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
+            const userId = ethers.utils.hashMessage(owner.address);
             const amount = ethers.utils.parseEther(
                 (await ERC20.balanceOf(owner.address)) + 100
             );
@@ -1027,21 +1188,24 @@ describe("LegacyAssetManager", async function () {
                 beneficiary2.address,
             ];
             const percentages = [33, 33, 34];
-            const message = ethers.BigNumber.from(
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
             const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
             const signature = await authorizer.signMessage(hashedMessage);
             await expect(
                 ownerAssetManager.addERC20Assets(
-                    userTag,
+                    userId,
                     [ERC20.address],
                     [amount],
                     [beneficiaries],
                     [percentages],
-                    hashedMessage,
+                    nonce,
                     signature
                 )
             ).to.be.revertedWith(
@@ -1061,7 +1225,7 @@ describe("LegacyAssetManager", async function () {
         //         beneficiary1,
         //         beneficiary2,
         //     } = await deploy();
-        //     const userTag = ethers.utils.hashMessage(owner.address);
+        //     const userId = ethers.utils.hashMessage(owner.address);
         //     const amount = ethers.utils.parseEther("101");
         //     await ownerERC20.approve(
         //         ownerVault.address,
@@ -1082,7 +1246,7 @@ describe("LegacyAssetManager", async function () {
         //     const signature = await authorizer.signMessage(hashedMessage);
         //     await expect(
         //         ownerAssetManager.addERC20Assets(
-        //             userTag,
+        //             userId,
         //             [ERC20.address],
         //             [amount],
         //             [beneficiaries],
@@ -1107,7 +1271,7 @@ describe("LegacyAssetManager", async function () {
                 beneficiary1,
                 beneficiary2,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
+            const userId = ethers.utils.hashMessage(owner.address);
             const amount = ethers.utils.parseEther("100");
             await ownerERC20.approve(
                 ownerVault.address,
@@ -1119,21 +1283,24 @@ describe("LegacyAssetManager", async function () {
                 beneficiary2.address,
             ];
             const percentages = [33, 34, 34];
-            const message = ethers.BigNumber.from(
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
             const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
             const signature = await authorizer.signMessage(hashedMessage);
             await expect(
                 ownerAssetManager.addERC20Assets(
-                    userTag,
+                    userId,
                     [ERC20.address],
                     [amount],
                     [beneficiaries],
                     [percentages],
-                    hashedMessage,
+                    nonce,
                     signature
                 )
             ).to.be.revertedWith(
@@ -1157,7 +1324,7 @@ describe("LegacyAssetManager", async function () {
                 beneficiary1,
                 beneficiary2,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
+            const userId = ethers.utils.hashMessage(owner.address);
             const amount = ethers.utils.parseEther("100");
             await ownerERC20.approve(
                 ownerVault.address,
@@ -1169,40 +1336,49 @@ describe("LegacyAssetManager", async function () {
                 beneficiary2.address,
             ];
             const percentages = [33, 33, 34];
-            const addMessage = ethers.BigNumber.from(
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const addHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(addMessage)
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
-            const addSignature = await authorizer.signMessage(addHashedMessage);
+            const addSignature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC20Assets(
-                userTag,
+                userId,
                 [ERC20.address],
                 [amount],
                 [beneficiaries],
                 [percentages],
-                addHashedMessage,
+                nonce,
                 addSignature
             );
             const claimHashedMessage = ethers.utils.arrayify(
                 ethers.utils.solidityKeccak256(
-                    ["address", "address", "address"],
-                    [owner.address, beneficiary.address, ERC20.address]
+                    ["address", "address", "address", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC20.address,
+                        nonce + 1,
+                    ]
                 )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
             await expect(
                 beneficiaryAssetManager.claimERC20Asset(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC20.address,
+                    nonce + 1,
                     [claimSignature]
                 )
             )
                 .to.emit(beneficiaryAssetManager, "ERC20AssetClaimed")
                 .withArgs(
-                    userTag,
+                    userId,
                     owner.address,
                     beneficiary.address,
                     ERC20.address,
@@ -1224,7 +1400,7 @@ describe("LegacyAssetManager", async function () {
                 beneficiary1,
                 beneficiary2,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
+            const userId = ethers.utils.hashMessage(owner.address);
             const amount = ethers.utils.parseEther("100");
             await ownerERC20.approve(
                 ownerVault.address,
@@ -1236,41 +1412,65 @@ describe("LegacyAssetManager", async function () {
                 beneficiary2.address,
             ];
             const percentages = [33, 33, 34];
-            const addMessage = ethers.BigNumber.from(
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const addHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(addMessage)
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
-            const addSignature = await authorizer.signMessage(addHashedMessage);
+            const addSignature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC20Assets(
-                userTag,
+                userId,
                 [ERC20.address],
                 [amount],
                 [beneficiaries],
                 [percentages],
-                addHashedMessage,
+                nonce,
                 addSignature
             );
             const claimHashedMessage = ethers.utils.arrayify(
                 ethers.utils.solidityKeccak256(
-                    ["address", "address", "address"],
-                    [owner.address, beneficiary.address, ERC20.address]
+                    ["address", "address", "address", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC20.address,
+                        nonce + 1,
+                    ]
                 )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
             await beneficiaryAssetManager.claimERC20Asset(
-                userTag,
+                userId,
                 owner.address,
                 ERC20.address,
+                nonce + 1,
                 [claimSignature]
+            );
+            const claimHashedMessage1 = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["address", "address", "address", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC20.address,
+                        nonce + 2,
+                    ]
+                )
+            );
+            const claimSignature1 = await admin.signMessage(
+                claimHashedMessage1
             );
             await expect(
                 beneficiaryAssetManager.claimERC20Asset(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC20.address,
-                    [claimSignature]
+                    nonce + 2,
+                    [claimSignature1]
                 )
             ).to.be.revertedWith(
                 "LegacyAssetManager: Beneficiary has already claimed the asset"
@@ -1291,7 +1491,7 @@ describe("LegacyAssetManager", async function () {
                 beneficiary2,
                 beneficiary3,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
+            const userId = ethers.utils.hashMessage(owner.address);
             const amount = ethers.utils.parseEther("100");
             await ownerERC20.approve(
                 ownerVault.address,
@@ -1303,34 +1503,43 @@ describe("LegacyAssetManager", async function () {
                 beneficiary3.address,
             ];
             const percentages = [33, 33, 34];
-            const addMessage = ethers.BigNumber.from(
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const addHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(addMessage)
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
-            const addSignature = await authorizer.signMessage(addHashedMessage);
+            const addSignature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC20Assets(
-                userTag,
+                userId,
                 [ERC20.address],
                 [amount],
                 [beneficiaries],
                 [percentages],
-                addHashedMessage,
+                nonce,
                 addSignature
             );
             const claimHashedMessage = ethers.utils.arrayify(
                 ethers.utils.solidityKeccak256(
-                    ["address", "address", "address"],
-                    [owner.address, beneficiary.address, ERC20.address]
+                    ["address", "address", "address", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC20.address,
+                        nonce + 1,
+                    ]
                 )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
             await expect(
                 beneficiaryAssetManager.claimERC20Asset(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC20.address,
+                    nonce + 1,
                     [claimSignature]
                 )
             ).to.be.revertedWith("LegacyAssetManager: Beneficiary not found");
@@ -1350,7 +1559,7 @@ describe("LegacyAssetManager", async function () {
                 beneficiary2,
                 beneficiary3,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
+            const userId = ethers.utils.hashMessage(owner.address);
             const amount = ethers.utils.parseEther("100");
             await ownerERC20.approve(
                 ownerVault.address,
@@ -1362,26 +1571,34 @@ describe("LegacyAssetManager", async function () {
                 beneficiary3.address,
             ];
             const percentages = [33, 33, 34];
-            const addMessage = ethers.BigNumber.from(
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const addHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(addMessage)
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
-            const addSignature = await authorizer.signMessage(addHashedMessage);
+            const addSignature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC20Assets(
-                userTag,
+                userId,
                 [ERC20.address],
                 [amount],
                 [beneficiaries],
                 [percentages],
-                addHashedMessage,
+                nonce,
                 addSignature
             );
             const claimHashedMessage = ethers.utils.arrayify(
                 ethers.utils.solidityKeccak256(
-                    ["address", "address", "address"],
-                    [owner.address, beneficiary.address, ERC20.address]
+                    ["address", "address", "address", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC20.address,
+                        nonce + 1,
+                    ]
                 )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
@@ -1391,9 +1608,10 @@ describe("LegacyAssetManager", async function () {
             );
             await expect(
                 beneficiaryAssetManager.claimERC20Asset(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC20.address,
+                    nonce + 1,
                     [claimSignature]
                 )
             ).to.be.revertedWith(
@@ -1405,19 +1623,19 @@ describe("LegacyAssetManager", async function () {
     context("Add Backup Wallet", async () => {
         it("Should add a backup wallet for a valid user", async () => {
             const { owner, ownerAssetManager, backupWallet } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
+            const userId = ethers.utils.hashMessage(owner.address);
             await expect(
-                ownerAssetManager.setBackupWallet(userTag, backupWallet.address)
+                ownerAssetManager.setBackupWallet(userId, backupWallet.address)
             )
                 .to.emit(ownerAssetManager, "BackupWalletAdded")
-                .withArgs(userTag, owner.address, backupWallet.address);
+                .withArgs(userId, owner.address, backupWallet.address);
         });
         it("Should fail to add a backup wallet with zero address", async () => {
             const { owner, ownerAssetManager } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
+            const userId = ethers.utils.hashMessage(owner.address);
             await expect(
                 ownerAssetManager.setBackupWallet(
-                    userTag,
+                    userId,
                     ethers.constants.AddressZero
                 )
             ).to.be.revertedWith(
@@ -1426,13 +1644,13 @@ describe("LegacyAssetManager", async function () {
         });
         it("Should fail to add a backup wallet with already added address", async () => {
             const { owner, ownerAssetManager, backupWallet } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
+            const userId = ethers.utils.hashMessage(owner.address);
             await ownerAssetManager.setBackupWallet(
-                userTag,
+                userId,
                 backupWallet.address
             );
             await expect(
-                ownerAssetManager.setBackupWallet(userTag, backupWallet.address)
+                ownerAssetManager.setBackupWallet(userId, backupWallet.address)
             ).to.be.revertedWith(
                 "LegacyAssetManager: Backup wallet provided already set"
             );
@@ -1458,20 +1676,23 @@ describe("LegacyAssetManager", async function () {
                 beneficiary4,
                 backupWallet,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
+            const userId = ethers.utils.hashMessage(owner.address);
             await ownerAssetManager.setBackupWallet(
-                userTag,
+                userId,
                 backupWallet.address
             );
-            const message = ethers.BigNumber.from(
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
             const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
             const signature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC721Assets(
-                userTag,
+                userId,
                 [
                     ERC721.address,
                     ERC721.address,
@@ -1487,7 +1708,7 @@ describe("LegacyAssetManager", async function () {
                     beneficiary3.address,
                     beneficiary4.address,
                 ],
-                hashedMessage,
+                nonce,
                 signature
             );
             const amount = ethers.utils.parseEther("100");
@@ -1502,17 +1723,17 @@ describe("LegacyAssetManager", async function () {
                 ethers.utils.parseEther("100")
             );
             await ownerAssetManager.addERC20Assets(
-                userTag,
+                userId,
                 [ERC20.address],
                 [amount],
                 [beneficiaires],
                 [percentages],
-                hashedMessage,
+                nonce,
                 signature
             );
             await expect(
                 backupWalletAssetManager.switchBackupWallet(
-                    userTag,
+                    userId,
                     owner.address
                 )
             ).to.emit(backupWalletAssetManager, "BackupWalletSwitched");
@@ -1535,20 +1756,23 @@ describe("LegacyAssetManager", async function () {
                 beneficiary4,
                 backupWallet,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
+            const userId = ethers.utils.hashMessage(owner.address);
             await ownerAssetManager.setBackupWallet(
-                userTag,
+                userId,
                 backupWallet.address
             );
-            const message = ethers.BigNumber.from(
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
             const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
             const signature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC721Assets(
-                userTag,
+                userId,
                 [
                     ERC721.address,
                     ERC721.address,
@@ -1564,7 +1788,7 @@ describe("LegacyAssetManager", async function () {
                     beneficiary3.address,
                     beneficiary4.address,
                 ],
-                hashedMessage,
+                nonce,
                 signature
             );
             const amount = ethers.utils.parseEther("100");
@@ -1579,16 +1803,16 @@ describe("LegacyAssetManager", async function () {
                 ethers.utils.parseEther("100")
             );
             await ownerAssetManager.addERC20Assets(
-                userTag,
+                userId,
                 [ERC20.address],
                 [amount],
                 [beneficiaires],
                 [percentages],
-                hashedMessage,
+                nonce,
                 signature
             );
             await expect(
-                ownerAssetManager.switchBackupWallet(userTag, owner.address)
+                ownerAssetManager.switchBackupWallet(userId, owner.address)
             ).to.be.revertedWith(
                 "LegacyAssetManager: Unauthorized backup wallet transfer call"
             );
@@ -1606,25 +1830,28 @@ describe("LegacyAssetManager", async function () {
                 beneficiary,
                 beneficiary1,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const message = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
             const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
             const signature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC721Assets(
-                userTag,
+                userId,
                 [ERC721.address],
                 [1],
                 [beneficiary.address],
-                hashedMessage,
+                nonce,
                 signature
             );
             await expect(
                 ownerAssetManager.setBeneficiary(
-                    userTag,
+                    userId,
                     ERC721.address,
                     1,
                     beneficiary1.address
@@ -1632,7 +1859,7 @@ describe("LegacyAssetManager", async function () {
             )
                 .to.emit(ownerAssetManager, "BeneficiaryChanged")
                 .withArgs(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC721.address,
                     1,
@@ -1650,39 +1877,49 @@ describe("LegacyAssetManager", async function () {
                 beneficiary,
                 beneficiary1,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
-            const message = ethers.BigNumber.from(
+            const userId = ethers.utils.hashMessage(owner.address);
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
             const hashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(message)
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
             const signature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC721Assets(
-                userTag,
+                userId,
                 [ERC721.address],
                 [1],
                 [beneficiary.address],
-                hashedMessage,
+                nonce,
                 signature
             );
             const claimHashedMessage = ethers.utils.arrayify(
                 ethers.utils.solidityKeccak256(
-                    ["address", "address", "address", "uint256"],
-                    [owner.address, beneficiary.address, ERC721.address, 1]
+                    ["address", "address", "address", "uint256", "uint256"],
+                    [
+                        owner.address,
+                        beneficiary.address,
+                        ERC721.address,
+                        1,
+                        nonce + 1,
+                    ]
                 )
             );
             const claimSignature = await admin.signMessage(claimHashedMessage);
             await beneficiaryAssetManager.claimERC721Asset(
-                userTag,
+                userId,
                 owner.address,
                 ERC721.address,
                 1,
+                nonce + 1,
                 [claimSignature]
             );
             await expect(
                 ownerAssetManager.setBeneficiary(
-                    userTag,
+                    userId,
                     ERC721.address,
                     1,
                     beneficiary1.address
@@ -1708,7 +1945,7 @@ describe("LegacyAssetManager", async function () {
                 beneficiary1,
                 beneficiary2,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
+            const userId = ethers.utils.hashMessage(owner.address);
             const amount = ethers.utils.parseEther("100");
             await ownerERC20.approve(
                 ownerVault.address,
@@ -1720,25 +1957,28 @@ describe("LegacyAssetManager", async function () {
                 beneficiary2.address,
             ];
             const percentages = [33, 33, 34];
-            const addMessage = ethers.BigNumber.from(
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const addHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(addMessage)
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
-            const addSignature = await authorizer.signMessage(addHashedMessage);
+            const addSignature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC20Assets(
-                userTag,
+                userId,
                 [ERC20.address],
                 [amount],
                 [beneficiaries],
                 [percentages],
-                addHashedMessage,
+                nonce,
                 addSignature
             );
             await expect(
                 ownerAssetManager.setBeneficiaryPercentage(
-                    userTag,
+                    userId,
                     ERC20.address,
                     beneficiary.address,
                     30
@@ -1746,7 +1986,7 @@ describe("LegacyAssetManager", async function () {
             )
                 .to.emit(ownerAssetManager, "BeneficiaryPercentageChanged")
                 .withArgs(
-                    userTag,
+                    userId,
                     owner.address,
                     ERC20.address,
                     beneficiary.address,
@@ -1775,7 +2015,7 @@ describe("LegacyAssetManager", async function () {
                 beneficiary1,
                 beneficiary2,
             } = await deploy();
-            const userTag = ethers.utils.hashMessage(owner.address);
+            const userId = ethers.utils.hashMessage(owner.address);
             const amount = ethers.utils.parseEther("100");
             await ownerERC20.approve(
                 ownerVault.address,
@@ -1787,25 +2027,28 @@ describe("LegacyAssetManager", async function () {
                 beneficiary2.address,
             ];
             const percentages = [33, 33, 34];
-            const addMessage = ethers.BigNumber.from(
+            const nonce = ethers.BigNumber.from(
                 ethers.utils.randomBytes(4)
             ).toString();
-            const addHashedMessage = ethers.utils.arrayify(
-                ethers.utils.hashMessage(addMessage)
+            const hashedMessage = ethers.utils.arrayify(
+                ethers.utils.solidityKeccak256(
+                    ["string", "address", "uint256"],
+                    [userId, owner.address, nonce]
+                )
             );
-            const addSignature = await authorizer.signMessage(addHashedMessage);
+            const addSignature = await authorizer.signMessage(hashedMessage);
             await ownerAssetManager.addERC20Assets(
-                userTag,
+                userId,
                 [ERC20.address],
                 [amount],
                 [beneficiaries],
                 [percentages],
-                addHashedMessage,
+                nonce,
                 addSignature
             );
             await expect(
                 ownerAssetManager.setBeneficiaryPercentage(
-                    userTag,
+                    userId,
                     ERC20.address,
                     beneficiary.address,
                     34

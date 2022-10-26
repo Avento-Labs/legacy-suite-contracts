@@ -7,10 +7,10 @@ module.exports = {
             seeds: [process.env.rinkeby_mnemonic],
             gas: 2100000,
         },
-        rinkeby: {
-            url: process.env.rinkeby_rpc_url,
+        goerli: {
+            url: process.env.goerli_rpc_url,
             accounts: {
-                mnemonic: process.env.rinkeby_mnemonic,
+                mnemonic: process.env.goerli_mnemonic,
             },
             gas: 2100000,
             networkTimeOut: 1000000000000000,
