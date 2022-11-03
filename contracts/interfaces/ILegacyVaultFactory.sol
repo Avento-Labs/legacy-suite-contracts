@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 interface ILegacyVaultFactory {
-    function createVault(address _memberAddress) external;
+    function createVault(string memory userId, address _memberAddress) external;
 
     function getVault(address _listedAddress) external view returns (address);
 
@@ -11,9 +11,10 @@ interface ILegacyVaultFactory {
         view
         returns (address);
 
-    function addWallet(address _memberAddress) external;
+    function addWallet(string memory userId, address _memberAddress) external;
 
-    function removeWallet(address _memberAddress) external;
+    function removeWallet(string memory userId, address _memberAddress)
+        external;
 
     function setLegacyAssetManagerAddress(address _VaultAddress) external;
 

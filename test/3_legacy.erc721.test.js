@@ -75,7 +75,7 @@ async function deploy() {
     )
   );
   const signature = await authorizer.signMessage(hashedMessage);
-  await ownerAssetManager.createUserVault(nonce, signature);
+  await ownerAssetManager.createUserVault(userId, nonce, signature);
   const ownerVaultAddress = await LegacyVaultFactory.getVault(owner.address);
 
   const ownerERC721 = await (
@@ -136,9 +136,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
           userId,
           [ERC721.address],
           [1],
-          [beneficiary.address],
-          nonce,
-          signature
+          [beneficiary.address]
         )
       )
         .to.emit(ownerAssetManager, "ERC721AssetAdded")
@@ -174,9 +172,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
         userId,
         [ERC721.address],
         [1],
-        [beneficiary.address],
-        nonce,
-        signature
+        [beneficiary.address]
       );
 
       await expect(
@@ -184,9 +180,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
           userId,
           [ERC721.address],
           [1],
-          [beneficiary.address],
-          nonce,
-          signature
+          [beneficiary.address]
         )
       ).to.revertedWith("LegacyAssetManager: Asset already added");
     });
@@ -217,9 +211,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
           userId,
           [ERC721.address],
           [11],
-          [beneficiary.address],
-          nonce,
-          signature
+          [beneficiary.address]
         )
       ).to.revertedWith("LegacyAssetManager: Caller is not the token owner");
     });
@@ -253,9 +245,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
           userId,
           [ERC721.address],
           [11],
-          [beneficiary.address],
-          nonce,
-          signature
+          [beneficiary.address]
         )
       ).to.revertedWith("LegacyAssetManager: Asset not approved");
     });
@@ -287,9 +277,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
         userId,
         [ERC721.address],
         [1],
-        [beneficiary.address],
-        nonce,
-        addSignature
+        [beneficiary.address]
       );
 
       const claimHashedMessage = ethers.utils.arrayify(
@@ -346,9 +334,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
         userId,
         [ERC721.address],
         [1],
-        [beneficiary.address],
-        nonce,
-        addSignature
+        [beneficiary.address]
       );
 
       const claimHashedMessage = ethers.utils.arrayify(
@@ -415,9 +401,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
         userId,
         [ERC721.address],
         [1],
-        [beneficiary1.address],
-        nonce,
-        addSignature
+        [beneficiary1.address]
       );
 
       const claimHashedMessage = ethers.utils.arrayify(
@@ -466,9 +450,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
         userId,
         [ERC721.address],
         [1],
-        [beneficiary.address],
-        nonce,
-        addSignature
+        [beneficiary.address]
       );
 
       const claimHashedMessage = ethers.utils.arrayify(
@@ -521,9 +503,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
         userId,
         [ERC721.address],
         [1],
-        [beneficiary.address],
-        nonce,
-        addSignature
+        [beneficiary.address]
       );
 
       await expect(
@@ -557,9 +537,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
         userId,
         [ERC721.address],
         [1],
-        [beneficiary.address],
-        nonce,
-        addSignature
+        [beneficiary.address]
       );
 
       const claimHashedMessage = ethers.utils.arrayify(
@@ -610,9 +588,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
         userId,
         [ERC721.address],
         [1],
-        [beneficiary.address],
-        nonce,
-        addSignature
+        [beneficiary.address]
       );
 
       await expect(
@@ -647,9 +623,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
         userId,
         [ERC721.address],
         [1],
-        [beneficiary.address],
-        nonce,
-        signature
+        [beneficiary.address]
       );
       await expect(
         ownerAssetManager.setBeneficiary(
@@ -694,9 +668,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
         userId,
         [ERC721.address],
         [1],
-        [beneficiary.address],
-        nonce,
-        signature
+        [beneficiary.address]
       );
       const claimHashedMessage = ethers.utils.arrayify(
         ethers.utils.solidityKeccak256(

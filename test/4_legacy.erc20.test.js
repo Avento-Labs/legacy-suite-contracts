@@ -66,7 +66,6 @@ async function deploy() {
   const beneficiaryAssetManager = LegacyAssetManagerFactory.connect(
     beneficiary
   ).attach(LegacyAssetManager.address);
-  const wallets = [wallet1.address, wallet2.address, wallet3.address];
   const userId = ethers.utils.hashMessage(owner.address);
   const nonce = ethers.BigNumber.from(ethers.utils.randomBytes(16)).toString();
   const hashedMessage = ethers.utils.arrayify(
@@ -76,7 +75,7 @@ async function deploy() {
     )
   );
   const signature = await authorizer.signMessage(hashedMessage);
-  await ownerAssetManager.createUserVault(nonce, signature);
+  await ownerAssetManager.createUserVault(userId, nonce, signature);
   const ownerVaultAddress = await LegacyVaultFactory.getVault(owner.address);
   const ownerERC20 = await (await ethers.getContractFactory("ERC20Mock", admin))
     .connect(owner)
@@ -146,11 +145,8 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
         ownerAssetManager.addERC20Assets(
           userId,
           [ERC20.address],
-
           [beneficiaries],
-          [percentages],
-          nonce,
-          signature
+          [percentages]
         )
       )
         .to.emit(ownerAssetManager, "ERC20AssetAdded")
@@ -200,9 +196,7 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
           userId,
           [ERC20.address],
           [beneficiaries],
-          [percentages],
-          nonce,
-          signature
+          [percentages]
         )
       ).to.be.revertedWith(
         "LegacyAssetManager: Insufficient allowance for the asset"
@@ -296,9 +290,7 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
           [ERC20.address],
 
           [beneficiaries],
-          [percentages],
-          nonce,
-          signature
+          [percentages]
         )
       ).to.be.revertedWith(
         "LegacyAssetManager: Beneficiary percentages exceed 100"
@@ -348,9 +340,7 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
         [ERC20.address],
 
         [beneficiaries],
-        [percentages],
-        nonce,
-        addSignature
+        [percentages]
       );
       const claimHashedMessage = ethers.utils.arrayify(
         ethers.utils.solidityKeccak256(
@@ -419,9 +409,7 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
         [ERC20.address],
 
         [beneficiaries],
-        [percentages],
-        nonce,
-        addSignature
+        [percentages]
       );
       const claimHashedMessage = ethers.utils.arrayify(
         ethers.utils.solidityKeccak256(
@@ -498,9 +486,7 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
         [ERC20.address],
 
         [beneficiaries],
-        [percentages],
-        nonce,
-        addSignature
+        [percentages]
       );
       const claimHashedMessage = ethers.utils.arrayify(
         ethers.utils.solidityKeccak256(
@@ -561,9 +547,7 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
         [ERC20.address],
 
         [beneficiaries],
-        [percentages],
-        nonce,
-        addSignature
+        [percentages]
       );
       const claimHashedMessage = ethers.utils.arrayify(
         ethers.utils.solidityKeccak256(
@@ -631,9 +615,7 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
         userId,
         [ERC20.address],
         [beneficiaries],
-        [percentages],
-        nonce,
-        addSignature
+        [percentages]
       );
       await expect(
         ownerAssetManager.setERC20BeneficiaryPercentage(
@@ -694,9 +676,7 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
         [ERC20.address],
 
         [beneficiaries],
-        [percentages],
-        nonce,
-        addSignature
+        [percentages]
       );
       await expect(
         ownerAssetManager.setERC20BeneficiaryPercentage(
@@ -749,9 +729,7 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
         userId,
         [ERC20.address],
         [beneficiaries],
-        [percentages],
-        nonce,
-        addSignature
+        [percentages]
       );
 
       const claimHashedMessage = ethers.utils.arrayify(

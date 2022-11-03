@@ -16,11 +16,17 @@ contract LegacyVaultFactory is ILegacyVaultFactory, AccessControl, Pausable {
     address public legacyAssetManager;
     uint256 public maxWallets;
 
-    event UserVaultCreated(address owner, address vault);
+    event UserVaultCreated(string userId, address owner, address vault);
 
-    event WalletAdded(address mainWallet, address newWallet, address vault);
+    event WalletAdded(
+        string userId,
+        address mainWallet,
+        address newWallet,
+        address vault
+    );
 
     event WalletRemoved(
+        string userId,
         address mainWallet,
         address removedWallet,
         address vault
@@ -42,7 +48,7 @@ contract LegacyVaultFactory is ILegacyVaultFactory, AccessControl, Pausable {
         _;
     }
 
-    function createVault(address _memberAddress)
+    function createVault(string calldata userId, address _memberAddress)
         external
         override
         onlyRole(ADMIN_ROLE)
@@ -57,7 +63,7 @@ contract LegacyVaultFactory is ILegacyVaultFactory, AccessControl, Pausable {
             address(legacyAssetManager)
         );
         memberToContract[_memberAddress] = legacyVault;
-        emit UserVaultCreated(_memberAddress, address(legacyVault));
+        emit UserVaultCreated(userId, _memberAddress, address(legacyVault));
     }
 
     function getVault(address _listedAddress)
@@ -85,7 +91,9 @@ contract LegacyVaultFactory is ILegacyVaultFactory, AccessControl, Pausable {
         return addressToMainWallet[_listedAddress];
     }
 
-    function addWallet(address _memberAddress) external {
+    function addWallet(string calldata userId, address _memberAddress)
+        external
+    {
         require(
             address(memberToContract[_memberAddress]) != address(0),
             "LegacyVaultFactory: User vault not deployed"
@@ -97,13 +105,16 @@ contract LegacyVaultFactory is ILegacyVaultFactory, AccessControl, Pausable {
         addressToMainWallet[_msgSender()] = _memberAddress;
         addressCount[_memberAddress]++;
         emit WalletAdded(
+            userId,
             _memberAddress,
             _msgSender(),
             address(memberToContract[_memberAddress])
         );
     }
 
-    function removeWallet(address _listedAddress) external {
+    function removeWallet(string calldata userId, address _listedAddress)
+        external
+    {
         require(
             address(memberToContract[_msgSender()]) != address(0),
             "LegacyVaultFactory: User vault not deployed"
@@ -115,6 +126,7 @@ contract LegacyVaultFactory is ILegacyVaultFactory, AccessControl, Pausable {
         delete addressToMainWallet[_listedAddress];
         addressCount[_msgSender()]--;
         emit WalletRemoved(
+            userId,
             _msgSender(),
             _listedAddress,
             address(memberToContract[_msgSender()])

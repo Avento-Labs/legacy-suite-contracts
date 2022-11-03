@@ -83,6 +83,7 @@ describe("LegacyAssetManager - vault", async function () {
         ownerAssetManager,
         LegacyVaultFactory,
       } = await deploy();
+      const userId = ethers.utils.hashMessage(owner.address);
       const nonce = ethers.BigNumber.from(
         ethers.utils.randomBytes(16)
       ).toString();
@@ -93,9 +94,10 @@ describe("LegacyAssetManager - vault", async function () {
         )
       );
       const signature = await authorizer.signMessage(hashedMessage);
-      await expect(ownerAssetManager.createUserVault(nonce, signature))
+      await expect(ownerAssetManager.createUserVault(userId, nonce, signature))
         .to.emit(LegacyVaultFactory, "UserVaultCreated")
         .withArgs(
+          userId,
           owner.address,
           await LegacyVaultFactory.getVault(owner.address)
         );
@@ -114,6 +116,7 @@ describe("LegacyAssetManager - vault", async function () {
         wallet2VaultFactory,
         wallet3VaultFactory,
       } = await deploy();
+      const userId = ethers.utils.hashMessage(owner.address);
       const nonce = ethers.BigNumber.from(
         ethers.utils.randomBytes(16)
       ).toString();
@@ -124,11 +127,11 @@ describe("LegacyAssetManager - vault", async function () {
         )
       );
       const signature = await authorizer.signMessage(hashedMessage);
-      await ownerAssetManager.createUserVault(nonce, signature);
+      await ownerAssetManager.createUserVault(userId, nonce, signature);
 
-      await wallet1VaultFactory.addWallet(owner.address);
-      await wallet2VaultFactory.addWallet(owner.address);
-      await wallet3VaultFactory.addWallet(owner.address);
+      await wallet1VaultFactory.addWallet(userId, owner.address);
+      await wallet2VaultFactory.addWallet(userId, owner.address);
+      await wallet3VaultFactory.addWallet(userId, owner.address);
       expect(await LegacyVaultFactory.getVault(wallet1.address)).to.be.equals(
         await LegacyVaultFactory.getVault(owner.address)
       );
@@ -153,6 +156,7 @@ describe("LegacyAssetManager - vault", async function () {
         wallet2VaultFactory,
         wallet3VaultFactory,
       } = await deploy();
+      const userId = ethers.utils.hashMessage(owner.address);
       const nonce = ethers.BigNumber.from(
         ethers.utils.randomBytes(16)
       ).toString();
@@ -163,11 +167,11 @@ describe("LegacyAssetManager - vault", async function () {
         )
       );
       const signature = await authorizer.signMessage(hashedMessage);
-      await ownerAssetManager.createUserVault(nonce, signature);
+      await ownerAssetManager.createUserVault(userId, nonce, signature);
 
-      await wallet1VaultFactory.addWallet(owner.address);
-      await wallet2VaultFactory.addWallet(owner.address);
-      await wallet3VaultFactory.addWallet(owner.address);
+      await wallet1VaultFactory.addWallet(userId, owner.address);
+      await wallet2VaultFactory.addWallet(userId, owner.address);
+      await wallet3VaultFactory.addWallet(userId, owner.address);
       expect(await LegacyVaultFactory.getVault(wallet1.address)).to.be.equals(
         await LegacyVaultFactory.getVault(owner.address)
       );
@@ -192,6 +196,7 @@ describe("LegacyAssetManager - vault", async function () {
         wallet2VaultFactory,
         wallet3VaultFactory,
       } = await deploy();
+      const userId = ethers.utils.hashMessage(owner.address);
       const nonce = ethers.BigNumber.from(
         ethers.utils.randomBytes(16)
       ).toString();
@@ -202,10 +207,10 @@ describe("LegacyAssetManager - vault", async function () {
         )
       );
       const signature = await authorizer.signMessage(hashedMessage);
-      await ownerAssetManager.createUserVault(nonce, signature);
+      await ownerAssetManager.createUserVault(userId, nonce, signature);
 
-      await wallet1VaultFactory.addWallet(owner.address);
-      await wallet2VaultFactory.addWallet(owner.address);
+      await wallet1VaultFactory.addWallet(userId, owner.address);
+      await wallet2VaultFactory.addWallet(userId, owner.address);
 
       await expect(
         LegacyVaultFactory.getVault(wallet3.address)
@@ -229,6 +234,7 @@ describe("LegacyAssetManager - vault", async function () {
         wallet2VaultFactory,
         wallet3VaultFactory,
       } = await deploy();
+      const userId = ethers.utils.hashMessage(owner.address);
       const nonce = ethers.BigNumber.from(
         ethers.utils.randomBytes(16)
       ).toString();
@@ -239,16 +245,15 @@ describe("LegacyAssetManager - vault", async function () {
         )
       );
       const signature = await authorizer.signMessage(hashedMessage);
-      await ownerAssetManager.createUserVault(nonce, signature);
+      await ownerAssetManager.createUserVault(userId, nonce, signature);
 
-      await wallet1VaultFactory.addWallet(owner.address);
-      await wallet2VaultFactory.addWallet(owner.address);
-      await wallet3VaultFactory.addWallet(owner.address);
+      await wallet1VaultFactory.addWallet(userId, owner.address);
+      await wallet2VaultFactory.addWallet(userId, owner.address);
+      await wallet3VaultFactory.addWallet(userId, owner.address);
 
-      await expect(ownerVaultFactory.removeWallet(wallet1.address)).to.emit(
-        LegacyVaultFactory,
-        "WalletRemoved"
-      );
+      await expect(
+        ownerVaultFactory.removeWallet(userId, wallet1.address)
+      ).to.emit(LegacyVaultFactory, "WalletRemoved");
     });
     it("Should failt to remove listed wallet when called by the other wallet", async function () {
       const {
@@ -265,6 +270,7 @@ describe("LegacyAssetManager - vault", async function () {
         wallet2VaultFactory,
         wallet3VaultFactory,
       } = await deploy();
+      const userId = ethers.utils.hashMessage(owner.address);
       const nonce = ethers.BigNumber.from(
         ethers.utils.randomBytes(16)
       ).toString();
@@ -275,14 +281,14 @@ describe("LegacyAssetManager - vault", async function () {
         )
       );
       const signature = await authorizer.signMessage(hashedMessage);
-      await ownerAssetManager.createUserVault(nonce, signature);
+      await ownerAssetManager.createUserVault(userId, nonce, signature);
 
-      await wallet1VaultFactory.addWallet(owner.address);
-      await wallet2VaultFactory.addWallet(owner.address);
-      await wallet3VaultFactory.addWallet(owner.address);
+      await wallet1VaultFactory.addWallet(userId, owner.address);
+      await wallet2VaultFactory.addWallet(userId, owner.address);
+      await wallet3VaultFactory.addWallet(userId, owner.address);
 
       await expect(
-        wallet3VaultFactory.removeWallet(wallet1.address)
+        wallet3VaultFactory.removeWallet(userId, wallet1.address)
       ).to.be.revertedWith("LegacyVaultFactory: User vault not deployed");
     });
     it("Should failt to remove unlisted wallet", async function () {
@@ -300,6 +306,7 @@ describe("LegacyAssetManager - vault", async function () {
         wallet2VaultFactory,
         wallet3VaultFactory,
       } = await deploy();
+      const userId = ethers.utils.hashMessage(owner.address);
       const nonce = ethers.BigNumber.from(
         ethers.utils.randomBytes(16)
       ).toString();
@@ -310,13 +317,13 @@ describe("LegacyAssetManager - vault", async function () {
         )
       );
       const signature = await authorizer.signMessage(hashedMessage);
-      await ownerAssetManager.createUserVault(nonce, signature);
+      await ownerAssetManager.createUserVault(userId, nonce, signature);
 
-      await wallet1VaultFactory.addWallet(owner.address);
-      await wallet2VaultFactory.addWallet(owner.address);
+      await wallet1VaultFactory.addWallet(userId, owner.address);
+      await wallet2VaultFactory.addWallet(userId, owner.address);
 
       await expect(
-        ownerVaultFactory.removeWallet(wallet3.address)
+        ownerVaultFactory.removeWallet(userId, wallet3.address)
       ).to.be.revertedWith("LegacyVaultFactory: Invalid address provided");
     });
   });

@@ -75,7 +75,6 @@ async function deploy() {
   const beneficiaryAssetManager = LegacyAssetManagerFactory.connect(
     beneficiary
   ).attach(LegacyAssetManager.address);
-  const wallets = [wallet1.address, wallet2.address, wallet3.address];
   const userId = ethers.utils.hashMessage(owner.address);
   const nonce = ethers.BigNumber.from(ethers.utils.randomBytes(16)).toString();
   const hashedMessage = ethers.utils.arrayify(
@@ -85,7 +84,7 @@ async function deploy() {
     )
   );
   const signature = await authorizer.signMessage(hashedMessage);
-  await ownerAssetManager.createUserVault(nonce, signature);
+  await ownerAssetManager.createUserVault(userId, nonce, signature);
   const ownerVaultAddress = await LegacyVaultFactory.getVault(owner.address);
   const ownerERC1155 = await (
     await ethers.getContractFactory("ERC1155Mock", admin)
@@ -151,37 +150,15 @@ describe("LegacyAssetManager - Backup Wallet", async function () {
         beneficiary,
         backupWallet,
       } = await deploy();
-      const userId = ethers.utils.hashMessage(owner.address);
-      const nonce = ethers.BigNumber.from(
-        ethers.utils.randomBytes(4)
-      ).toString();
-      const hashedMessage = ethers.utils.arrayify(
-        ethers.utils.solidityKeccak256(
-          ["string", "address", "uint256"],
-          [userId, owner.address, nonce]
-        )
-      );
-      const signature = await authorizer.signMessage(hashedMessage);
-      await ownerAssetManager.addERC1155Assets(
-        userId,
-        [ERC1155.address],
-        [1],
-        [1],
-        [[beneficiary.address]],
-        [[100]],
-        nonce,
-        signature
-      );
       await ownerAssetManager.setBackupWallet(backupWallet.address);
       expect(await ownerAssetManager.backupWallets(owner.address)).to.be.equals(
         backupWallet.address
       );
     });
     it("Should fail to add a backup wallet when the user is not listed", async () => {
-      const { owner, ownerAssetManager, backupWallet } = await deploy();
-      const userId = ethers.utils.hashMessage(owner.address);
+      const { owner, beneficiaryAssetManager, backupWallet } = await deploy();
       await expect(
-        ownerAssetManager.setBackupWallet(backupWallet.address)
+        beneficiaryAssetManager.setBackupWallet(backupWallet.address)
       ).to.be.revertedWith("LegacyAssetManager: User is not listed");
     });
   });
@@ -223,9 +200,7 @@ describe("LegacyAssetManager - Backup Wallet", async function () {
         [1],
         [1],
         [[beneficiary.address]],
-        [[100]],
-        nonce,
-        signature
+        [[100]]
       );
       await ownerAssetManager.addERC721Assets(
         userId,
@@ -243,9 +218,7 @@ describe("LegacyAssetManager - Backup Wallet", async function () {
           beneficiary2.address,
           beneficiary3.address,
           beneficiary4.address,
-        ],
-        nonce,
-        signature
+        ]
       );
       const beneficiaires = [
         beneficiary.address,
@@ -261,9 +234,7 @@ describe("LegacyAssetManager - Backup Wallet", async function () {
         userId,
         [ERC20.address],
         [beneficiaires],
-        [percentages],
-        nonce,
-        signature
+        [percentages]
       );
 
       await ownerAssetManager.setBackupWallet(backupWallet.address);
@@ -307,9 +278,7 @@ describe("LegacyAssetManager - Backup Wallet", async function () {
         [1],
         [1],
         [[beneficiary.address]],
-        [[100]],
-        nonce,
-        signature
+        [[100]]
       );
       await ownerAssetManager.addERC721Assets(
         userId,
@@ -327,9 +296,7 @@ describe("LegacyAssetManager - Backup Wallet", async function () {
           beneficiary2.address,
           beneficiary3.address,
           beneficiary4.address,
-        ],
-        nonce,
-        signature
+        ]
       );
       const beneficiaires = [
         beneficiary.address,
@@ -345,9 +312,7 @@ describe("LegacyAssetManager - Backup Wallet", async function () {
         userId,
         [ERC20.address],
         [beneficiaires],
-        [percentages],
-        nonce,
-        signature
+        [percentages]
       );
 
       await ownerAssetManager.setBackupWallet(backupWallet.address);

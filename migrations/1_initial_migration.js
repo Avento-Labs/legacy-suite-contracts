@@ -23,7 +23,7 @@ async function main() {
     );
 
     const LegacyAssetManager = await (
-      await LegacyAssetManagerFactory.deploy(1)
+      await LegacyAssetManagerFactory.deploy(3)
     ).deployed();
 
     await sleep(5000);
@@ -57,9 +57,6 @@ async function main() {
     );
     await sleep(5000);
 
-    await LegacyVaultFactory.setLegacyAssetManagerAddress(
-      LegacyAssetManager.address
-    );
     await sleep(5000);
   } catch (error) {
     console.log(error);
