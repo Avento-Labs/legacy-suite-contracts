@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
@@ -53,7 +52,7 @@ contract LegacyVault is ILegacyVault, AccessControl, Pausable {
         address _recipientAddress,
         uint256 _tokenId,
         uint256 _amount
-    ) external {
+    ) external override whenNotPaused onlyRole(ADMIN_ROLE) {
         IERC1155(_contractAddress).safeTransferFrom(
             _ownerAddress,
             _recipientAddress,
