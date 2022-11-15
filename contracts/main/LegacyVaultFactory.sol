@@ -36,6 +36,7 @@ contract LegacyVaultFactory is ILegacyVaultFactory, AccessControl, Pausable {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _setRoleAdmin(ADMIN_ROLE, DEFAULT_ADMIN_ROLE);
         _setupRole(ADMIN_ROLE, _msgSender());
+        _grantRole(ADMIN_ROLE, legacyAssetManager);
         legacyAssetManager = _legacyAssetManager;
         maxWallets = _maxWallets;
     }

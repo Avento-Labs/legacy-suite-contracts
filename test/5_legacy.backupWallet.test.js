@@ -159,7 +159,7 @@ describe("LegacyAssetManager - Backup Wallet", async function () {
       const { owner, beneficiaryAssetManager, backupWallet } = await deploy();
       await expect(
         beneficiaryAssetManager.setBackupWallet(backupWallet.address)
-      ).to.be.revertedWith("LegacyAssetManager: User is not listed");
+      ).to.be.revertedWith("LegacyAssetManager: User not listed");
     });
   });
 

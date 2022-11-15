@@ -39,10 +39,25 @@ module.exports = {
   solidity: {
     version: "0.8.15",
     settings: {
-      viaIR: true,
+      metadata: {
+        useLiteralContent: true,
+      },
       optimizer: {
         enabled: true,
         runs: 100,
+      },
+      viaIR: true,
+      outputSelection: {
+        "*": {
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata",
+          ],
+          "": ["id", "ast"],
+        },
       },
     },
   },

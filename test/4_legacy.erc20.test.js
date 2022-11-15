@@ -80,8 +80,13 @@ async function deploy() {
   const ownerERC20 = await (await ethers.getContractFactory("ERC20Mock", admin))
     .connect(owner)
     .attach(ERC20.address);
+  const beneficiaryERC20 = await (
+    await ethers.getContractFactory("ERC20Mock", admin)
+  )
+    .connect(beneficiary)
+    .attach(ERC20.address);
 
-  await ERC20.transfer(owner.address, ethers.utils.parseEther("10000"));
+  await ERC20.transfer(owner.address, ethers.utils.parseEther("100"));
 
   return {
     admin,
@@ -95,6 +100,7 @@ async function deploy() {
     beneficiaryAssetManager,
     ERC20,
     ownerERC20,
+    beneficiaryERC20,
     beneficiary,
     beneficiary1,
     beneficiary2,
@@ -365,6 +371,107 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
           beneficiary.address,
           ERC20.address,
           ethers.utils.parseEther("33"),
+          [admin.address]
+        );
+    });
+    it("Should reclaim single ERC20 asset", async () => {
+      const {
+        admin,
+        authorizer,
+        owner,
+        beneficiary,
+        ownerAssetManager,
+        ownerVaultAddress,
+        ERC20,
+        ownerERC20,
+        beneficiaryERC20,
+        beneficiaryAssetManager,
+        beneficiary1,
+        beneficiary2,
+      } = await deploy();
+      const userId = ethers.utils.hashMessage(owner.address);
+      const amount = ethers.utils.parseEther("100");
+      await ownerERC20.approve(
+        ownerVaultAddress,
+        ethers.utils.parseEther("100")
+      );
+      const beneficiaries = [
+        beneficiary.address,
+        beneficiary1.address,
+        beneficiary2.address,
+      ];
+      const percentages = [33, 33, 34];
+      const nonce = ethers.BigNumber.from(
+        ethers.utils.randomBytes(4)
+      ).toString();
+      await ownerAssetManager.addERC20Assets(
+        userId,
+        [ERC20.address],
+
+        [beneficiaries],
+        [percentages]
+      );
+      await ownerERC20.transfer(
+        beneficiary.address,
+        ethers.utils.parseEther("70")
+      );
+
+      const claimHashedMessage = ethers.utils.arrayify(
+        ethers.utils.solidityKeccak256(
+          ["address", "address", "address", "uint256"],
+          [owner.address, beneficiary.address, ERC20.address, nonce + 1]
+        )
+      );
+      const claimSignature = await admin.signMessage(claimHashedMessage);
+
+      await expect(
+        beneficiaryAssetManager.claimERC20Asset(
+          userId,
+          owner.address,
+          ERC20.address,
+          nonce + 1,
+          [claimSignature]
+        )
+      )
+        .to.emit(beneficiaryAssetManager, "ERC20AssetClaimed")
+        .withArgs(
+          userId,
+          owner.address,
+          beneficiary.address,
+          ERC20.address,
+          ethers.utils.parseEther("9.9"),
+          [admin.address]
+        );
+
+      await beneficiaryERC20.transfer(
+        owner.address,
+        ethers.utils.parseEther("70")
+      );
+
+      const claimHashedMessage1 = ethers.utils.arrayify(
+        ethers.utils.solidityKeccak256(
+          ["address", "address", "address", "uint256"],
+          [owner.address, beneficiary.address, ERC20.address, nonce + 2]
+        )
+      );
+      const claimSignature1 = await admin.signMessage(claimHashedMessage1);
+
+      await expect(
+        beneficiaryAssetManager.claimERC20Asset(
+          userId,
+          owner.address,
+          ERC20.address,
+          nonce + 2,
+          [claimSignature1]
+        )
+      )
+        .to.emit(beneficiaryAssetManager, "ERC20AssetClaimed")
+        .withArgs(
+          userId,
+          owner.address,
+          beneficiary.address,
+          ERC20.address,
+          ethers.utils.parseEther("23.1"),
           [admin.address]
         );
     });

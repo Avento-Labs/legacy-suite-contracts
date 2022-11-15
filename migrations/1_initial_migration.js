@@ -27,6 +27,7 @@ async function main() {
     ).deployed();
 
     await sleep(5000);
+    console.log("LegacyAssetManager: " + LegacyAssetManager.address);
 
     const LegacyVaultFactory = await LegacyVaultFactoryArtifact.deploy(
       LegacyAssetManager.address,

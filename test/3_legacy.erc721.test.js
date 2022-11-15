@@ -182,7 +182,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
           [1],
           [beneficiary.address]
         )
-      ).to.revertedWith("LegacyAssetManager: Asset already added");
+      ).to.revertedWith("LegacyAssetManager: Asset is already listed");
     });
     it("Should fail to add single ERC721 asset more than once", async function () {
       const {
@@ -471,9 +471,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
           nonce + 1,
           [claimSignature]
         )
-      ).to.be.revertedWith(
-        "LegacyAssetManager: The asset does not belong to the owner now"
-      );
+      ).to.be.revertedWith("ERC721: transfer caller is not owner nor approved");
     });
   });
 
@@ -626,7 +624,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
         [beneficiary.address]
       );
       await expect(
-        ownerAssetManager.setBeneficiary(
+        ownerAssetManager.setERC721Beneficiary(
           userId,
           ERC721.address,
           1,
@@ -686,7 +684,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
         [claimSignature]
       );
       await expect(
-        ownerAssetManager.setBeneficiary(
+        ownerAssetManager.setERC721Beneficiary(
           userId,
           ERC721.address,
           1,
