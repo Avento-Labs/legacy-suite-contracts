@@ -24,7 +24,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
     mapping(address => bool) public listedMembers;
     mapping(address => mapping(address => mapping(uint256 => bool)))
         public listedAssets;
-    mapping(address => address) public backupWallets;
+    mapping(address => address[2]) public backupWallets;
     mapping(uint256 => bool) public burnedNonces;
 
     event ERC1155AssetAdded(
@@ -36,6 +36,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address[] beneficiaries,
         uint8[] beneficiaryPercentages
     );
+
     event ERC721AssetAdded(
         string userId,
         address indexed owner,
@@ -99,6 +100,13 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address _contract,
         uint256 amount,
         address[] signers
+    );
+
+    event BackupWalletAdded(
+        string userId,
+        address indexed owner,
+        uint8 index,
+        address indexed backupwallet
     );
 
     event BackupWalletSwitched(
@@ -171,6 +179,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         ERC721Asset[] erc721Assets;
         ERC20Asset[] erc20Assets;
         bool backupWalletStatus;
+        uint8 backupWalletIndex;
     }
 
     modifier onlyListedUser(address user) {
@@ -501,10 +510,10 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         emit ERC721AssetRemoved(userId, _msgSender(), _contract, tokenId);
     }
 
-    function removeERC20Asset(string memory userId, address _contract)
-        external
-        nonReentrant
-    {
+    function removeERC20Asset(
+        string memory userId,
+        address _contract
+    ) external nonReentrant {
         uint256 assetIndex = _findERC20AssetIndex(_msgSender(), _contract);
         require(
             userAssets[_msgSender()]
@@ -520,20 +529,24 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         emit ERC20AssetRemoved(userId, _msgSender(), _contract);
     }
 
-    function setBackupWallet(address _backupWallet)
-        external
-        onlyListedUser(_msgSender())
-    {
+    function addBackupWallet(
+        string memory userId,
+        uint8 index,
+        address _backupWallet
+    ) external onlyListedUser(_msgSender()) {
         require(
             !userAssets[_msgSender()].backupWalletStatus,
             "LegacyAssetManager: Backup wallet already switched"
         );
-        backupWallets[_msgSender()] = _backupWallet;
+        require(index < 2, "LegacyAssetManager: Invalid backup wallet index");
+        backupWallets[_msgSender()][index] = _backupWallet;
+        emit BackupWalletAdded(userId, _msgSender(), index, _backupWallet);
     }
 
     function switchBackupWallet(string memory userId, address owner) external {
         require(
-            _msgSender() == backupWallets[owner],
+            _msgSender() == backupWallets[owner][0] ||
+                _msgSender() == backupWallets[owner][1],
             "LegacyAssetManager: Unauthorized backup wallet transfer call"
         );
         ILegacyVault userVault = ILegacyVault(
@@ -597,6 +610,11 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
             }
         }
         userAssets[owner].backupWalletStatus = true;
+        if (backupWallets[owner][0] == _msgSender()) {
+            userAssets[owner].backupWalletIndex = 0;
+        } else {
+            userAssets[owner].backupWalletIndex = 1;
+        }
         emit BackupWalletSwitched(userId, owner, _msgSender());
     }
 
@@ -638,7 +656,9 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address vaultAddress = vaultFactory.getVault(owner);
         address currentOwner;
         if (userAssets[owner].backupWalletStatus) {
-            currentOwner = backupWallets[owner];
+            currentOwner = backupWallets[owner][
+                userAssets[owner].backupWalletIndex
+            ];
         } else {
             currentOwner = owner;
         }
@@ -740,7 +760,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address vaultAddress = vaultFactory.getVault(owner);
         address from;
         if (userAssets[owner].backupWalletStatus) {
-            from = backupWallets[owner];
+            from = backupWallets[owner][userAssets[owner].backupWalletIndex];
         } else {
             from = owner;
         }
@@ -800,7 +820,9 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address vaultAddress = vaultFactory.getVault(owner);
         address currentOwner;
         if (userAssets[owner].backupWalletStatus) {
-            currentOwner = backupWallets[owner];
+            currentOwner = backupWallets[owner][
+                userAssets[owner].backupWalletIndex
+            ];
         } else {
             currentOwner = owner;
         }
@@ -930,11 +952,10 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         revert("LegacyAssetManager: Asset not found");
     }
 
-    function _findERC20AssetIndex(address user, address _contract)
-        internal
-        view
-        returns (uint256)
-    {
+    function _findERC20AssetIndex(
+        address user,
+        address _contract
+    ) internal view returns (uint256) {
         for (uint i = 0; i < userAssets[user].erc20Assets.length; i++) {
             if (userAssets[user].erc20Assets[i]._contract == _contract) {
                 return i;
@@ -1105,17 +1126,15 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         );
     }
 
-    function setVaultFactory(address _vaultFactory)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function setVaultFactory(
+        address _vaultFactory
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         vaultFactory = ILegacyVaultFactory(_vaultFactory);
     }
 
-    function setMinAdminSignature(uint16 _minAdminSignature)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function setMinAdminSignature(
+        uint16 _minAdminSignature
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         minAdminSignature = _minAdminSignature;
     }
 
@@ -1169,11 +1188,10 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         return signers;
     }
 
-    function _verifySignature(bytes32 _hashedMessage, bytes calldata signature)
-        internal
-        pure
-        returns (address)
-    {
+    function _verifySignature(
+        bytes32 _hashedMessage,
+        bytes calldata signature
+    ) internal pure returns (address) {
         bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(
             _hashedMessage
         );
