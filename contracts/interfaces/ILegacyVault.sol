@@ -24,6 +24,12 @@ interface ILegacyVault {
         uint256 _amount
     ) external;
 
+    function getBackupWallet(
+        address _owner
+        )
+        external
+        returns (address[2] memory);
+
     function pauseContract() external;
 
     function unpauseContract() external;

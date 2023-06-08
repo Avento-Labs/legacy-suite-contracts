@@ -11,20 +11,21 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "../interfaces/ILegacyVaultFactory.sol";
 import "../interfaces/ILegacyVault.sol";
+import "../interfaces/ILegacyAssetManager.sol";
 
-contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
+contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard, ILegacyAssetManager {
     using SafeERC20 for IERC20;
 
     bytes32 public constant LEGACY_ADMIN = keccak256("LEGACY_ADMIN");
     bytes32 public constant ASSET_AUTHORIZER = keccak256("ASSET_AUTHORIZER");
 
     ILegacyVaultFactory public vaultFactory;
+    ILegacyVault public legacyVault;
     uint16 public minAdminSignature;
     mapping(address => UserAssets) public userAssets;
     mapping(address => bool) public listedMembers;
     mapping(address => mapping(address => mapping(uint256 => bool)))
-        public listedAssets;
-    mapping(address => address[2]) public backupWallets;
+    public listedAssets;
     mapping(uint256 => bool) public burnedNonces;
 
     event ERC1155AssetAdded(
@@ -102,18 +103,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address[] signers
     );
 
-    event BackupWalletAdded(
-        string userId,
-        address indexed owner,
-        uint8 index,
-        address indexed backupwallet
-    );
 
-    event BackupWalletSwitched(
-        string userId,
-        address indexed owner,
-        address indexed backupwallet
-    );
 
     event BeneficiaryChanged(
         string userId,
@@ -134,53 +124,6 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address beneficiary,
         uint8 newpercentage
     );
-
-    /**
-     * Structs
-     */
-    struct Beneficiary {
-        address account;
-        uint8 allowedPercentage;
-        uint256 totalAmount;
-        uint256 claimedAmount;
-    }
-
-    struct ERC1155Asset {
-        address owner;
-        address _contract;
-        uint256 tokenId;
-        uint256 totalAmount;
-        uint256 totalRemainingAmount;
-        uint8 totalPercentage;
-        Beneficiary[] beneficiaries;
-        uint256 remainingBeneficiaries;
-    }
-
-    struct ERC721Asset {
-        address owner;
-        address _contract;
-        uint256 tokenId;
-        address beneficiary;
-        bool transferStatus;
-    }
-
-    struct ERC20Asset {
-        address owner;
-        address _contract;
-        uint256 totalAmount;
-        uint256 totalRemainingAmount;
-        uint8 totalPercentage;
-        Beneficiary[] beneficiaries;
-        uint256 remainingBeneficiaries;
-    }
-
-    struct UserAssets {
-        ERC1155Asset[] erc1155Assets;
-        ERC721Asset[] erc721Assets;
-        ERC20Asset[] erc20Assets;
-        bool backupWalletStatus;
-        uint8 backupWalletIndex;
-    }
 
     modifier onlyListedUser(address user) {
         require(listedMembers[user], "LegacyAssetManager: User not listed");
@@ -208,14 +151,38 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         minAdminSignature = _minAdminSignature;
     }
 
+    function _checkListedUser(address _member) external view returns (bool) {
+        return listedMembers[_member];
+    }
+
     function createUserVault(
-        string calldata userId,
+        string memory userId,
         uint256 nonce,
         bytes calldata signature
     ) external whenNotPaused {
         _authorizeUser(_msgSender(), nonce, signature);
         vaultFactory.createVault(userId, _msgSender());
     }
+
+    function getUserAssets(address _member) external view returns (UserAssets memory) {
+        return userAssets[_member];
+    }
+
+    function setBackupWalletStatus(
+        address _member,
+        bool status
+        )
+        external{
+            userAssets[_member].backupWalletStatus = status;
+        }
+
+        function setBackupWalletIndex(
+        address _member,
+        uint8 index
+        )
+        external{
+            userAssets[_member].backupWalletIndex = index;
+        }
 
     function addERC1155Assets(
         string calldata userId,
@@ -529,96 +496,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         emit ERC20AssetRemoved(userId, _msgSender(), _contract);
     }
 
-    function addBackupWallet(
-        string memory userId,
-        uint8 index,
-        address _backupWallet
-    ) external onlyListedUser(_msgSender()) {
-        require(
-            !userAssets[_msgSender()].backupWalletStatus,
-            "LegacyAssetManager: Backup wallet already switched"
-        );
-        require(index < 2, "LegacyAssetManager: Invalid backup wallet index");
-        backupWallets[_msgSender()][index] = _backupWallet;
-        emit BackupWalletAdded(userId, _msgSender(), index, _backupWallet);
-    }
-
-    function switchBackupWallet(string memory userId, address owner) external {
-        require(
-            _msgSender() == backupWallets[owner][0] ||
-                _msgSender() == backupWallets[owner][1],
-            "LegacyAssetManager: Unauthorized backup wallet transfer call"
-        );
-        ILegacyVault userVault = ILegacyVault(
-            ILegacyVaultFactory(vaultFactory).getVault(owner)
-        );
-        for (uint i = 0; i < userAssets[owner].erc1155Assets.length; i++) {
-            IERC1155 _contract = IERC1155(
-                userAssets[owner].erc1155Assets[i]._contract
-            );
-            uint256 userBalance = _contract.balanceOf(
-                owner,
-                userAssets[owner].erc1155Assets[i].tokenId
-            );
-            if (
-                userBalance > 0 &&
-                _contract.isApprovedForAll(owner, address(userVault))
-            ) {
-                userVault.transferErc1155TokensAllowed(
-                    address(_contract),
-                    owner,
-                    _msgSender(),
-                    userAssets[owner].erc1155Assets[i].tokenId,
-                    userBalance
-                );
-            }
-        }
-        for (uint i = 0; i < userAssets[owner].erc721Assets.length; i++) {
-            IERC721 _contract = IERC721(
-                userAssets[owner].erc721Assets[i]._contract
-            );
-            uint256 tokenId = userAssets[owner].erc721Assets[i].tokenId;
-            if (_contract.ownerOf(tokenId) == owner) {
-                userVault.transferErc721TokensAllowed(
-                    address(_contract),
-                    owner,
-                    _msgSender(),
-                    tokenId
-                );
-            }
-        }
-        for (uint i = 0; i < userAssets[owner].erc20Assets.length; i++) {
-            IERC20 _contract = IERC20(
-                userAssets[owner].erc20Assets[i]._contract
-            );
-            uint256 userBalance = _contract.balanceOf(owner);
-            uint256 allowance = _contract.allowance(owner, address(userVault));
-            if (userBalance > 0 && userBalance >= allowance) {
-                userVault.transferErc20TokensAllowed(
-                    address(_contract),
-                    owner,
-                    _msgSender(),
-                    allowance
-                );
-            } else if (userBalance > 0 && userBalance < allowance) {
-                userVault.transferErc20TokensAllowed(
-                    address(_contract),
-                    owner,
-                    _msgSender(),
-                    userBalance
-                );
-            }
-        }
-        userAssets[owner].backupWalletStatus = true;
-        if (backupWallets[owner][0] == _msgSender()) {
-            userAssets[owner].backupWalletIndex = 0;
-        } else {
-            userAssets[owner].backupWalletIndex = 1;
-        }
-        emit BackupWalletSwitched(userId, owner, _msgSender());
-    }
-
-    function claimERC1155Asset(
+        function claimERC1155Asset(
         string memory userId,
         address owner,
         address _contract,
@@ -656,8 +534,8 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address vaultAddress = vaultFactory.getVault(owner);
         address currentOwner;
         if (userAssets[owner].backupWalletStatus) {
-            currentOwner = backupWallets[owner][
-                userAssets[owner].backupWalletIndex
+            currentOwner = ILegacyVault(vaultFactory.getVault(owner)).getBackupWallet(owner)[
+            userAssets[owner].backupWalletIndex
             ];
         } else {
             currentOwner = owner;
@@ -760,7 +638,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address vaultAddress = vaultFactory.getVault(owner);
         address from;
         if (userAssets[owner].backupWalletStatus) {
-            from = backupWallets[owner][userAssets[owner].backupWalletIndex];
+            from = ILegacyVault(vaultFactory.getVault(owner)).getBackupWallet(owner)[userAssets[owner].backupWalletIndex];
         } else {
             from = owner;
         }
@@ -820,7 +698,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         address vaultAddress = vaultFactory.getVault(owner);
         address currentOwner;
         if (userAssets[owner].backupWalletStatus) {
-            currentOwner = backupWallets[owner][
+            currentOwner = ILegacyVault(vaultFactory.getVault(owner)).getBackupWallet(owner)[
                 userAssets[owner].backupWalletIndex
             ];
         } else {

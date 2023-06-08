@@ -49,7 +49,7 @@ contract LegacyVaultFactory is ILegacyVaultFactory, AccessControl, Pausable {
         _;
     }
 
-    function createVault(string calldata userId, address _memberAddress)
+    function createVault(string memory userId, address _memberAddress)
         external
         override
         onlyRole(ADMIN_ROLE)
