@@ -12,7 +12,8 @@ async function deploy() {
     beneficiary3,
     beneficiary4,
     beneficiary5,
-    backupWallet,
+    backupWallet1,
+    backupWallet2,
     wallet1,
     wallet2,
     wallet3,
@@ -30,15 +31,15 @@ async function deploy() {
   ).deploy();
 
   const LegacyAssetManagerFactory = await ethers.getContractFactory(
-    "LegacyAssetManager",
+    "contracts/main/LegacyAssetManager.sol:LegacyAssetManager",
     admin
   );
   const LegacyVaultFactoryArtifact = await ethers.getContractFactory(
-    "LegacyVaultFactory",
+    "contracts/main/LegacyVaultFactory.sol:LegacyVaultFactory",
     admin
   );
   const LegacyVaultArtifact = await ethers.getContractFactory(
-    "LegacyVault",
+    "contracts/main/LegacyVault.sol:LegacyVault",
     admin
   );
 
@@ -70,7 +71,7 @@ async function deploy() {
     LegacyAssetManager.address
   );
   const backupWalletAssetManager = LegacyAssetManagerFactory.connect(
-    backupWallet
+    backupWallet1
   ).attach(LegacyAssetManager.address);
   const beneficiaryAssetManager = LegacyAssetManagerFactory.connect(
     beneficiary
@@ -135,32 +136,58 @@ async function deploy() {
     beneficiary3,
     beneficiary4,
     beneficiary5,
-    backupWallet,
+    backupWallet1,
+    backupWallet2    
   };
 }
 
 describe("LegacyAssetManager - Backup Wallet", async function () {
-  context("Add Backup Wallet", async () => {
-    it("Should add a backup wallet for a valid user", async () => {
+  context("Add First Backup Wallet", async () => {
+    it("Should add first backup wallet for a valid user", async () => {
       const {
         authorizer,
         owner,
         ownerAssetManager,
         ERC1155,
         beneficiary,
-        backupWallet,
+        backupWallet1,
       } = await deploy();
-      await ownerAssetManager.setBackupWallet(backupWallet.address);
-      expect(await ownerAssetManager.backupWallets(owner.address)).to.be.equals(
-        backupWallet.address
+      await ownerAssetManager.addBackupWallet("string",0,backupWallet1.address);
+      expect(await ownerAssetManager.backupWallets(owner.address,0)).to.be.equals(
+        backupWallet1.address
       );
     });
     it("Should fail to add a backup wallet when the user is not listed", async () => {
-      const { owner, beneficiaryAssetManager, backupWallet } = await deploy();
+      const { owner, beneficiaryAssetManager, backupWallet1 } = await deploy();
       await expect(
-        beneficiaryAssetManager.setBackupWallet(backupWallet.address)
+        beneficiaryAssetManager.addBackupWallet("string",0,backupWallet1.address)
       ).to.be.revertedWith("LegacyAssetManager: User not listed");
     });
+  });
+    context("Add second Backup Wallet", async () => {
+      it("Should add second backup wallet for a valid user", async () => {
+        const {
+          authorizer,
+          owner,
+          ownerAssetManager,
+          ERC1155,
+          beneficiary,
+          backupWallet1,
+          backupWallet2
+        } = await deploy();
+        await ownerAssetManager.addBackupWallet("string",1,backupWallet2.address);
+        console.log(await ownerAssetManager.backupWallets(owner.address,1));
+        expect(await ownerAssetManager.backupWallets(owner.address,1)).to.be.equals(
+          backupWallet2.address
+        );
+      });
+      it("Should fail to add a backup wallet when the user is not listed", async () => {
+        const { owner, beneficiaryAssetManager, backupWallet1 } = await deploy();
+        await expect(
+          beneficiaryAssetManager.addBackupWallet("string",1,backupWallet1.address)
+        ).to.be.revertedWith("LegacyAssetManager: User not listed");
+      });
+      
   });
 
   context("Switch Backup Wallet", async () => {
@@ -181,7 +208,7 @@ describe("LegacyAssetManager - Backup Wallet", async function () {
         beneficiary2,
         beneficiary3,
         beneficiary4,
-        backupWallet,
+        backupWallet1
       } = await deploy();
       const userId = ethers.utils.hashMessage(owner.address);
       const nonce = ethers.BigNumber.from(
@@ -237,11 +264,12 @@ describe("LegacyAssetManager - Backup Wallet", async function () {
         [percentages]
       );
 
-      await ownerAssetManager.setBackupWallet(backupWallet.address);
+      await ownerAssetManager.addBackupWallet("string",0,backupWallet1.address);
       await expect(
         backupWalletAssetManager.switchBackupWallet(userId, owner.address)
       ).to.emit(backupWalletAssetManager, "BackupWalletSwitched");
-    });
+    backupWalletAssetManager.switchBackupWallet(userId, owner.address);
+  });
     it("Should fail to swith backup wallet when called by non backup wallet", async () => {
       const {
         admin,
@@ -259,7 +287,7 @@ describe("LegacyAssetManager - Backup Wallet", async function () {
         beneficiary2,
         beneficiary3,
         beneficiary4,
-        backupWallet,
+        backupWallet1
       } = await deploy();
       const userId = ethers.utils.hashMessage(owner.address);
       const nonce = ethers.BigNumber.from(
@@ -315,7 +343,7 @@ describe("LegacyAssetManager - Backup Wallet", async function () {
         [percentages]
       );
 
-      await ownerAssetManager.setBackupWallet(backupWallet.address);
+      await ownerAssetManager.addBackupWallet("string",0,backupWallet1.address);
       await expect(
         ownerAssetManager.switchBackupWallet(userId, owner.address)
       ).to.be.revertedWith(
