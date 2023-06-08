@@ -1,6 +1,6 @@
-require('dotenv').config();
-require('@nomiclabs/hardhat-waffle');
-require('@nomiclabs/hardhat-etherscan');
+require("dotenv").config();
+require("@nomiclabs/hardhat-waffle");
+require("@nomiclabs/hardhat-etherscan");
 
 module.exports = {
   networks: {
@@ -37,7 +37,7 @@ module.exports = {
     },
   },
   solidity: {
-    version: '0.8.15',
+    version: "0.8.15",
     settings: {
       metadata: {
         useLiteralContent: true,
@@ -48,31 +48,37 @@ module.exports = {
       },
       viaIR: true,
       outputSelection: {
-        '*': {
-          '*': ['abi', 'evm.bytecode', 'evm.deployedBytecode', 'evm.methodIdentifiers', 'metadata'],
-          '': ['id', 'ast'],
+        "*": {
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata",
+          ],
+          "": ["id", "ast"],
         },
       },
     },
   },
   paths: {
-    sources: './contracts',
-    tests: './test',
-    cache: './cache',
-    artifacts: './build',
+    sources: "./contracts",
+    tests: "./test",
+    cache: "./cache",
+    artifacts: "./build",
   },
   mocha: {
     timeout: 20000,
   },
   etherscan: {
-    apiKey: '3CQMI6V1GX34DVAWFC8H4KAMB3W559PE1V',
+    apiKey: "3CQMI6V1GX34DVAWFC8H4KAMB3W559PE1V",
     customChains: [
       {
-        network: 'mumbai',
+        network: "mumbai",
         chainId: 80001,
         urls: {
-          apiURL: 'https://api-rinkeby.etherscan.io/api',
-          browserURL: 'https://rinkeby.etherscan.io',
+          apiURL: "https://api-rinkeby.etherscan.io/api",
+          browserURL: "https://rinkeby.etherscan.io",
         },
       },
     ],
