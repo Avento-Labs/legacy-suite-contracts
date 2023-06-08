@@ -13,11 +13,49 @@ contract LegacyVault is ILegacyVault, AccessControl, Pausable {
     using SafeERC20 for IERC20;
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
+    address[2] public backupWallets;
+    bool public backupWalletStatus;
+
+    event BackupWalletsAdded(
+        string userId,
+        address indexed owner,
+        address[2] backupwallets,
+        string[2] walletNames
+    );
+
     constructor(address _memberAddress, address _legacyAddress) {
         _setupRole(DEFAULT_ADMIN_ROLE, _memberAddress);
         _setRoleAdmin(ADMIN_ROLE, DEFAULT_ADMIN_ROLE);
         _setupRole(ADMIN_ROLE, _memberAddress);
         _setupRole(ADMIN_ROLE, _legacyAddress);
+    }
+
+    function getBackupWallets() external view returns (address[2] memory) {
+        return backupWallets;
+    }
+
+    function setBackupWallets(
+        string memory userId,
+        address[2] calldata _backupWallets,
+        string[2] calldata walletNames
+    ) external onlyRole(ADMIN_ROLE) whenNotPaused {
+        require(
+            !backupWalletStatus,
+            "LegacyVault: Backup wallet already switched"
+        );
+        for (uint i = 0; i < 2; i++) {
+            require(
+                _backupWallets[i] != address(0),
+                "LegacyAssetManager: Backup wallet cannot be zero address"
+            );
+            backupWallets[i] = _backupWallets[i];
+        }
+        emit BackupWalletsAdded(
+            userId,
+            _msgSender(),
+            _backupWallets,
+            walletNames
+        );
     }
 
     function transferErc20TokensAllowed(

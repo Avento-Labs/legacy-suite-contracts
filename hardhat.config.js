@@ -44,7 +44,7 @@ module.exports = {
       },
       optimizer: {
         enabled: true,
-        runs: 10,
+        runs: 100,
       },
       viaIR: true,
       outputSelection: {

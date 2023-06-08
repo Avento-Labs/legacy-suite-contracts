@@ -2,6 +2,14 @@
 pragma solidity 0.8.15;
 
 interface ILegacyVault {
+    function getBackupWallets() external view returns (address[2] memory);
+
+    function setBackupWallets(
+        string memory userId,
+        address[2] calldata _backupWallets,
+        string[2] calldata walletNames
+    ) external;
+
     function transferErc20TokensAllowed(
         address _contractAddress,
         address _ownerAddress,
