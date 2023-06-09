@@ -49,15 +49,17 @@ contract LegacyVaultFactory is ILegacyVaultFactory, AccessControl, Pausable {
         _;
     }
 
-    function createVault(string calldata userId, address _memberAddress)
-        external
-        override
-        onlyRole(ADMIN_ROLE)
-        whenNotPaused
-    {
+    function createVault(
+        string calldata userId,
+        address _memberAddress
+    ) external override onlyRole(ADMIN_ROLE) whenNotPaused {
         require(
             legacyAssetManager != address(0),
             "LegacyVaultFactory: legacyBusiness not set"
+        );
+        require(
+            address(memberToContract[_memberAddress]) == address(0),
+            "LegacyVaultFactory: User vault already deployed"
         );
         LegacyVault legacyVault = new LegacyVault(
             _memberAddress,
@@ -67,12 +69,9 @@ contract LegacyVaultFactory is ILegacyVaultFactory, AccessControl, Pausable {
         emit UserVaultCreated(userId, _memberAddress, address(legacyVault));
     }
 
-    function getVault(address _listedAddress)
-        public
-        view
-        override
-        returns (address)
-    {
+    function getVault(
+        address _listedAddress
+    ) public view override returns (address) {
         address _memberAddress = getMainWallet(_listedAddress);
         require(
             _memberAddress != address(0),
@@ -81,20 +80,19 @@ contract LegacyVaultFactory is ILegacyVaultFactory, AccessControl, Pausable {
         return address(memberToContract[_memberAddress]);
     }
 
-    function getMainWallet(address _listedAddress)
-        public
-        view
-        returns (address)
-    {
+    function getMainWallet(
+        address _listedAddress
+    ) public view returns (address) {
         if (address(memberToContract[_listedAddress]) != address(0)) {
             return _listedAddress;
         }
         return addressToMainWallet[_listedAddress];
     }
 
-    function addWallet(string calldata userId, address _memberAddress)
-        external
-    {
+    function addWallet(
+        string calldata userId,
+        address _memberAddress
+    ) external {
         require(
             address(memberToContract[_memberAddress]) != address(0),
             "LegacyVaultFactory: User vault not deployed"
@@ -113,9 +111,10 @@ contract LegacyVaultFactory is ILegacyVaultFactory, AccessControl, Pausable {
         );
     }
 
-    function removeWallet(string calldata userId, address _listedAddress)
-        external
-    {
+    function removeWallet(
+        string calldata userId,
+        address _listedAddress
+    ) external {
         require(
             address(memberToContract[_msgSender()]) != address(0),
             "LegacyVaultFactory: User vault not deployed"
@@ -134,7 +133,9 @@ contract LegacyVaultFactory is ILegacyVaultFactory, AccessControl, Pausable {
         );
     }
 
-    function setLegacyAssetManagerAddress(address _assetManager)
+    function setLegacyAssetManagerAddress(
+        address _assetManager
+    )
         external
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
