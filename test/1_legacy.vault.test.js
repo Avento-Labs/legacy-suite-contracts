@@ -6,11 +6,11 @@ async function deploy() {
     await ethers.getSigners();
 
   const LegacyAssetManagerFactory = await ethers.getContractFactory(
-    "LegacyAssetManager",
+    "contracts/main/LegacyAssetManager.sol:LegacyAssetManager",
     admin
   );
   const LegacyVaultFactoryArtifact = await ethers.getContractFactory(
-    "LegacyVaultFactory",
+    "contracts/main/LegacyVaultFactory.sol:LegacyVaultFactory",
     admin
   );
 

@@ -24,15 +24,15 @@ async function deploy() {
   ).deploy();
 
   const LegacyAssetManagerFactory = await ethers.getContractFactory(
-    "LegacyAssetManager",
+    "contracts/main/LegacyAssetManager.sol:LegacyAssetManager",
     admin
   );
   const LegacyVaultFactoryArtifact = await ethers.getContractFactory(
-    "LegacyVaultFactory",
+    "contracts/main/LegacyVaultFactory.sol:LegacyVaultFactory",
     admin
   );
   const LegacyVaultArtifact = await ethers.getContractFactory(
-    "LegacyVault",
+    "contracts/main/LegacyVault.sol:LegacyVault",
     admin
   );
 
