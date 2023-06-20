@@ -4,16 +4,16 @@ pragma solidity 0.8.15;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "../interfaces/ILegacyAssetManagerERC20.sol";
 import "../interfaces/ILegacyVaultFactory.sol";
 import "../interfaces/ILegacyVault.sol";
 import "../interfaces/ILegacyAssetManager.sol";
 
-contract LegacyAssetManager is ILegacyAssetManager ,AccessControl, Pausable, ReentrancyGuard {
+
+contract LegacyAssetManagerERC20 is ILegacyAssetManagerERC20 ,AccessControl, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     bytes32 public constant LEGACY_ADMIN = keccak256("LEGACY_ADMIN");
@@ -26,24 +26,7 @@ contract LegacyAssetManager is ILegacyAssetManager ,AccessControl, Pausable, Ree
     mapping(address => mapping(address => mapping(uint256 => bool)))public listedAssets;
     mapping(uint256 => bool) public burnedNonces;
 
-    event ERC1155AssetAdded(
-        string userId,
-        address indexed owner,
-        address indexed _contract,
-        uint256 indexed tokenId,
-        uint256 totalAmount,
-        address[] beneficiaries,
-        uint8[] beneficiaryPercentages
-    );
-
-    event ERC721AssetAdded(
-        string userId,
-        address indexed owner,
-        address indexed _contract,
-        uint256 indexed tokenId,
-        address beneficiary
-    );
-
+    
     event ERC20AssetAdded(
         string userId,
         address indexed owner,
@@ -53,43 +36,10 @@ contract LegacyAssetManager is ILegacyAssetManager ,AccessControl, Pausable, Ree
         uint8[] beneficiaryPercentages
     );
 
-    event ERC1155AssetRemoved(
-        string userId,
-        address indexed owner,
-        address _contract,
-        uint256 indexed tokenId
-    );
-
-    event ERC721AssetRemoved(
-        string userId,
-        address indexed owner,
-        address _contract,
-        uint256 indexed tokenId
-    );
-
     event ERC20AssetRemoved(
         string userId,
         address indexed owner,
         address indexed _contract
-    );
-
-    event ERC1155AssetClaimed(
-        string userId,
-        address indexed owner,
-        address claimer,
-        address _contract,
-        uint256 indexed tokenId,
-        uint256 amount,
-        address[] signers
-    );
-
-    event ERC721AssetClaimed(
-        string userId,
-        address indexed owner,
-        address claimer,
-        address _contract,
-        uint256 indexed tokenId,
-        address[] signers
     );
 
     event ERC20AssetClaimed(
@@ -148,208 +98,8 @@ contract LegacyAssetManager is ILegacyAssetManager ,AccessControl, Pausable, Ree
         minAdminSignature = _minAdminSignature;
     }
 
-    function _checkListedUser(
-        address _member
-        )
-        external
-        view
-        returns (bool)
-        {
-            return listedMembers[_member];
-        }
-
-    function getUserAssets(
-        address _member
-        )
-        external
-        view
-        returns (UserAssets memory)
-        {
-            return userAssets[_member];
-        }
-
-    function setBackupWalletIndexStatus(
-        address _member,
-        uint8 index,
-        bool status
-        )
-        external
-        {
-            require(vaultFactory.getVault(_member) == msg.sender, "LegacyAssetManager: Unauthorized");
-            userAssets[_member].backupWalletIndex = index;
-            userAssets[_member].backupWalletStatus = status;
-        }
-
-    function createUserVault(
-        string calldata userId,
-        uint256 nonce,
-        bytes calldata signature
-    ) external whenNotPaused {
-        _authorizeUser(_msgSender(), nonce, signature);
-        vaultFactory.createVault(userId, _msgSender());
-    }
-
-    function addERC1155Assets(
-        string calldata userId,
-        address[] memory contracts,
-        uint256[] memory tokenIds,
-        uint256[] calldata totalAmount,
-        address[][] calldata beneficiaryAddresses,
-        uint8[][] calldata beneficiaryPercentages
-    ) external whenNotPaused nonReentrant onlyListedUser(_msgSender()) {
-        require(
-            contracts.length == tokenIds.length &&
-                tokenIds.length == beneficiaryAddresses.length &&
-                beneficiaryAddresses.length == totalAmount.length &&
-                totalAmount.length == beneficiaryPercentages.length,
-            "LegacyAssetManager: Arguments length mismatch"
-        );
-        for (uint i = 0; i < contracts.length; i++) {
-            _addERC1155Single(
-                userId,
-                contracts[i],
-                tokenIds[i],
-                totalAmount[i],
-                beneficiaryAddresses[i],
-                beneficiaryPercentages[i]
-            );
-        }
-    }
-
-    function _addERC1155Single(
-        string memory userId,
-        address _contract,
-        uint256 tokenId,
-        uint256 totalAmount,
-        address[] calldata beneficiaryAddresses,
-        uint8[] calldata beneficiaryPercentages
-    ) internal assetNotListed(_msgSender(), _contract, tokenId) {
-        require(
-            beneficiaryAddresses.length == beneficiaryPercentages.length,
-            "LegacyAssetManager: Arguments length mismatch"
-        );
-        require(
-            IERC1155(_contract).supportsInterface(0xd9b67a26),
-            "LegacyAssetManager: Contract is not a valid ERC1155 contract"
-        );
-        require(
-            IERC1155(_contract).balanceOf(_msgSender(), tokenId) > 0 &&
-                IERC1155(_contract).balanceOf(_msgSender(), tokenId) >=
-                totalAmount,
-            "LegacyAssetManager: Insufficient token balance"
-        );
-        require(
-            IERC1155(_contract).isApprovedForAll(
-                _msgSender(),
-                vaultFactory.getVault(_msgSender())
-            ),
-            "LegacyAssetManager: Asset not approved"
-        );
-        uint8 totalPercentage;
-        Beneficiary[] memory _beneficiaries = new Beneficiary[](
-            beneficiaryAddresses.length
-        );
-        for (uint i = 0; i < beneficiaryAddresses.length; i++) {
-            require(
-                beneficiaryPercentages[i] > 0,
-                "LegacyAssetManager: Beneficiary percentage must be > 0"
-            );
-            uint256 amount = (totalAmount * beneficiaryPercentages[i]) / 100;
-            _beneficiaries[i] = Beneficiary(
-                beneficiaryAddresses[i],
-                beneficiaryPercentages[i],
-                amount,
-                0
-            );
-            totalPercentage += beneficiaryPercentages[i];
-            require(
-                totalPercentage <= 100,
-                "LegacyAssetManager: Beneficiary percentages exceed 100"
-            );
-        }
-        userAssets[_msgSender()].erc1155Assets.push(
-            ERC1155Asset(
-                _msgSender(),
-                _contract,
-                tokenId,
-                totalAmount,
-                totalAmount,
-                totalPercentage,
-                _beneficiaries,
-                beneficiaryAddresses.length
-            )
-        );
-        listedAssets[_msgSender()][_contract][tokenId] = true;
-
-        emit ERC1155AssetAdded(
-            userId,
-            _msgSender(),
-            _contract,
-            tokenId,
-            totalAmount,
-            beneficiaryAddresses,
-            beneficiaryPercentages
-        );
-    }
-
-    function addERC721Assets(
-        string calldata userId,
-        address[] calldata _contracts,
-        uint256[] calldata tokenIds,
-        address[] calldata beneficiaries
-    ) external whenNotPaused nonReentrant onlyListedUser(_msgSender()) {
-        require(
-            _contracts.length == tokenIds.length &&
-                tokenIds.length == beneficiaries.length,
-            "LegacyAssetManager: Arguments length mismatch"
-        );
-        for (uint i = 0; i < tokenIds.length; i++) {
-            _addERC721Single(
-                userId,
-                _contracts[i],
-                tokenIds[i],
-                beneficiaries[i]
-            );
-        }
-    }
-
-    function _addERC721Single(
-        string memory userId,
-        address _contract,
-        uint256 tokenId,
-        address beneficiary
-    ) internal assetNotListed(_msgSender(), _contract, tokenId) {
-        require(
-            IERC721(_contract).supportsInterface(0x80ac58cd),
-            "LegacyAssetManager: Contract is not a valid ERC721 _contract"
-        );
-        require(
-            IERC721(_contract).ownerOf(tokenId) == _msgSender(),
-            "LegacyAssetManager: Caller is not the token owner"
-        );
-        require(
-            IERC721(_contract).getApproved(tokenId) ==
-                vaultFactory.getVault(_msgSender()) ||
-                IERC721(_contract).isApprovedForAll(
-                    _msgSender(),
-                    vaultFactory.getVault(_msgSender())
-                ),
-            "LegacyAssetManager: Asset not approved"
-        );
-        userAssets[_msgSender()].erc721Assets.push(
-            ERC721Asset(_msgSender(), _contract, tokenId, beneficiary, false)
-        );
-        listedAssets[_msgSender()][_contract][tokenId] = true;
-
-        emit ERC721AssetAdded(
-            userId,
-            _msgSender(),
-            _contract,
-            tokenId,
-            beneficiary
-        );
-    }
-
+    
+       
     function addERC20Assets(
         string calldata userId,
         address[] calldata contracts,
@@ -436,52 +186,7 @@ contract LegacyAssetManager is ILegacyAssetManager ,AccessControl, Pausable, Ree
         );
     }
 
-    function removeERC1155Asset(
-        string memory userId,
-        address _contract,
-        uint256 tokenId
-    ) external nonReentrant {
-        uint256 assetIndex = _findERC1155AssetIndex(
-            _msgSender(),
-            _contract,
-            tokenId
-        );
-        require(
-            userAssets[_msgSender()]
-                .erc1155Assets[assetIndex]
-                .remainingBeneficiaries > 0,
-            "LegacyAssetManager: Asset has been transferred to the beneficiaries"
-        );
-        userAssets[_msgSender()].erc1155Assets[assetIndex] = userAssets[
-            _msgSender()
-        ].erc1155Assets[userAssets[_msgSender()].erc1155Assets.length - 1];
-        userAssets[_msgSender()].erc1155Assets.pop();
-        listedAssets[_msgSender()][_contract][tokenId] = false;
-        emit ERC1155AssetRemoved(userId, _msgSender(), _contract, tokenId);
-    }
-
-    function removeERC721Asset(
-        string memory userId,
-        address _contract,
-        uint256 tokenId
-    ) external nonReentrant {
-        uint256 assetIndex = _findERC721AssetIndex(
-            _msgSender(),
-            _contract,
-            tokenId
-        );
-        require(
-            !userAssets[_msgSender()].erc721Assets[assetIndex].transferStatus,
-            "LegacyAssetManager: Asset has been transferred to the beneficiary"
-        );
-        userAssets[_msgSender()].erc721Assets[assetIndex] = userAssets[
-            _msgSender()
-        ].erc721Assets[userAssets[_msgSender()].erc721Assets.length - 1];
-        userAssets[_msgSender()].erc721Assets.pop();
-        listedAssets[_msgSender()][_contract][tokenId] = false;
-        emit ERC721AssetRemoved(userId, _msgSender(), _contract, tokenId);
-    }
-
+    
     function removeERC20Asset(
         string memory userId,
         address _contract
@@ -502,169 +207,6 @@ contract LegacyAssetManager is ILegacyAssetManager ,AccessControl, Pausable, Ree
     }
 
 
-
-   
-    function claimERC1155Asset(
-        string memory userId,
-        address owner,
-        address _contract,
-        uint256 tokenId,
-        uint256 nonce,
-        bytes[] calldata signatures
-    ) external whenNotPaused nonReentrant {
-        bytes32 hashedMessage = keccak256(
-            abi.encodePacked(owner, _msgSender(), _contract, tokenId, nonce)
-        );
-        uint256 assetIndex = _findERC1155AssetIndex(owner, _contract, tokenId);
-        uint256 beneficiaryIndex = _findERC1155BeneficiaryIndex(
-            _msgSender(),
-            userAssets[owner].erc1155Assets[assetIndex]
-        );
-
-        uint256 remainingAmount = userAssets[owner]
-            .erc1155Assets[assetIndex]
-            .beneficiaries[beneficiaryIndex]
-            .totalAmount -
-            userAssets[owner]
-                .erc1155Assets[assetIndex]
-                .beneficiaries[beneficiaryIndex]
-                .claimedAmount;
-        require(
-            remainingAmount > 0,
-            "LegacyAssetManager: Beneficiary has already claimed the asset"
-        );
-
-        address vaultAddress = vaultFactory.getVault(owner);
-        address currentOwner;
-        if (userAssets[owner].backupWalletStatus) {
-            currentOwner = ILegacyVault(ILegacyVaultFactory(vaultFactory).getVault(owner)).getBackupWallet(owner)[
-                userAssets[owner].backupWalletIndex
-            ];
-        } else {
-            currentOwner = owner;
-        }
-
-        uint256 ownerBalance = IERC1155(_contract).balanceOf(
-            currentOwner,
-            tokenId
-        );
-        require(
-            ownerBalance > 0,
-            "LegacyAssetManager: Owner has zero balance for this asset"
-        );
-
-        uint8 allowedPercentage = userAssets[owner]
-            .erc1155Assets[assetIndex]
-            .beneficiaries[beneficiaryIndex]
-            .allowedPercentage;
-
-        uint256 dueAmount;
-        if (
-            ownerBalance >=
-            userAssets[owner].erc1155Assets[assetIndex].totalRemainingAmount ||
-            ((ownerBalance * allowedPercentage) / 100) > remainingAmount
-        ) {
-            dueAmount = remainingAmount;
-        } else {
-            dueAmount = (ownerBalance * allowedPercentage) / 100;
-        }
-
-        userAssets[owner]
-            .erc1155Assets[assetIndex]
-            .totalRemainingAmount -= dueAmount;
-        userAssets[owner]
-            .erc1155Assets[assetIndex]
-            .beneficiaries[beneficiaryIndex]
-            .claimedAmount += dueAmount;
-        if (
-            userAssets[owner]
-                .erc1155Assets[assetIndex]
-                .beneficiaries[beneficiaryIndex]
-                .claimedAmount ==
-            userAssets[owner]
-                .erc1155Assets[assetIndex]
-                .beneficiaries[beneficiaryIndex]
-                .totalAmount
-        ) {
-            userAssets[owner]
-                .erc1155Assets[assetIndex]
-                .remainingBeneficiaries--;
-        }
-
-        ILegacyVault(vaultAddress).transferErc1155TokensAllowed(
-            _contract,
-            currentOwner,
-            _msgSender(),
-            tokenId,
-            dueAmount
-        );
-
-        emit ERC1155AssetClaimed(
-            userId,
-            owner,
-            _msgSender(),
-            _contract,
-            tokenId,
-            dueAmount,
-            _verifySigners(
-            hashedMessage,
-            nonce,
-            signatures
-        )
-        );
-    }
-
-    function claimERC721Asset(
-        string memory userId,
-        address owner,
-        address _contract,
-        uint256 tokenId,
-        uint256 nonce,
-        bytes[] calldata signatures
-    ) external whenNotPaused nonReentrant {
-        bytes32 hashedMessage = keccak256(
-            abi.encodePacked(owner, _msgSender(), _contract, tokenId, nonce)
-        );
-        uint256 assetIndex = _findERC721AssetIndex(owner, _contract, tokenId);
-
-        require(
-            !userAssets[owner].erc721Assets[assetIndex].transferStatus,
-            "LegacyAssetManager: Beneficiary has already claimed the asset"
-        );
-        require(
-            userAssets[owner].erc721Assets[assetIndex].beneficiary ==
-                _msgSender(),
-            "LegacyAssetManager: Unauthorized claim call"
-        );
-
-        address vaultAddress = vaultFactory.getVault(owner);
-        address from;
-        if (userAssets[owner].backupWalletStatus) {
-            from = ILegacyVault(ILegacyVaultFactory(vaultFactory).getVault(owner)).getBackupWallet(owner)[userAssets[owner].backupWalletIndex];
-        } else {
-            from = owner;
-        }
-
-        ILegacyVault(vaultAddress).transferErc721TokensAllowed(
-            _contract,
-            from,
-            _msgSender(),
-            tokenId
-        );
-        userAssets[owner].erc721Assets[assetIndex].transferStatus = true;
-        emit ERC721AssetClaimed(
-            userId,
-            owner,
-            _msgSender(),
-            _contract,
-            tokenId,
-            _verifySigners(
-            hashedMessage,
-            nonce,
-            signatures
-        )
-        );
-    }
 
     function claimERC20Asset(
         string memory userId,
