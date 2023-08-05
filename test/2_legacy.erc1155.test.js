@@ -457,7 +457,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
           nonce + 1,
           [claimSignature]
         )
-      ).to.be.revertedWith("LegacyAssetManager: Asset not found");
+      ).to.be.revertedWith("LegacyAssetManager: Asset not listed");
     });
     it("Should fail to claim single ERC1155 Asset when beneficiary has already claimed the asset", async function () {
       const {

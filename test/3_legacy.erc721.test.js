@@ -219,7 +219,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
         ownerAssetManager.addAssets(
           userId,
           [ERC721.address],
-          [1],
+          [11],
           [0],
           [[beneficiary.address]],
           [[100]]
@@ -419,7 +419,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
         [ERC721.address],
         [1],
         [0],
-        [[beneficiary.address]],
+        [[beneficiary1.address]],
         [[100]]
       );
 
@@ -583,7 +583,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
       await expect(
         ownerAssetManager.removeAsset(userId, ERC721.address, 1)
       ).to.be.revertedWith(
-        "LegacyAssetManager: Asset has been transferred to the beneficiary"
+        "LegacyAssetManager: Asset has been transferred to the beneficiaries"
       );
     });
     it("Should remove non-listed ERC721 Asset", async function () {
@@ -618,7 +618,7 @@ describe("LegacyAssetManager - ERC721 Assets", async function () {
 
       await expect(
         ownerAssetManager.removeAsset(userId, ERC721.address, 2)
-      ).to.be.revertedWith("LegacyAssetManager: Asset not found");
+      ).to.be.revertedWith("LegacyAssetManager: Asset not listed");
     });
   });
 

@@ -326,7 +326,7 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
                 beneficiaryAddresses,
                 beneficiaryPercentages
             );
-        } else if(erc20) {
+        } else if (erc20) {
             totalAmount = IERC20(_contract).allowance(
                 _msgSender(),
                 vaultFactory.getVault(_msgSender())
@@ -519,6 +519,10 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         bytes32 hashedMessage = keccak256(
             abi.encodePacked(owner, _msgSender(), _contract, tokenId, nonce)
         );
+        require(
+            listedAssets[owner][_contract][tokenId],
+            "LegacyAssetManager: Asset not listed"
+        );
         uint256 beneficiaryIndex;
         uint256 ownerBalance;
         uint256 allowedPercentage;
@@ -533,17 +537,23 @@ contract LegacyAssetManager is AccessControl, Pausable, ReentrancyGuard {
         } catch {
             erc721 = false;
         }
-        try IERC165(_contract).supportsInterface(0xd9b67a26) returns (
-            bool _erc1155
-        ) {
-            erc1155 = _erc1155;
-        } catch {
-            erc1155 = false;
-        }
-        try IERC20(_contract).balanceOf(_msgSender()) returns (uint256) {
-            erc20 = true;
-        } catch {
-            erc20 = false;
+        if (!erc721) {
+            try IERC165(_contract).supportsInterface(0xd9b67a26) returns (
+                bool _erc1155
+            ) {
+                erc1155 = _erc1155;
+            } catch {
+                erc1155 = false;
+            }
+            if (!erc1155) {
+                try IERC20(_contract).balanceOf(_msgSender()) returns (
+                    uint256
+                ) {
+                    erc20 = true;
+                } catch {
+                    erc20 = false;
+                }
+            }
         }
         require(
             erc721 || erc1155 || erc20,
