@@ -148,18 +148,21 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
       );
       const signature = await authorizer.signMessage(hashedMessage);
       await expect(
-        ownerAssetManager.addERC20Assets(
+        ownerAssetManager.addAssets(
           userId,
           [ERC20.address],
+          [0],
+          [0],
           [beneficiaries],
           [percentages]
         )
       )
-        .to.emit(ownerAssetManager, "ERC20AssetAdded")
+        .to.emit(ownerAssetManager, "AssetAdded")
         .withArgs(
           userId,
           owner.address,
           ERC20.address,
+          0,
           amount,
           beneficiaries,
           percentages
@@ -198,9 +201,11 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
       );
       const signature = await authorizer.signMessage(hashedMessage);
       await expect(
-        ownerAssetManager.addERC20Assets(
+        ownerAssetManager.addAssets(
           userId,
           [ERC20.address],
+          [0],
+          [0],
           [beneficiaries],
           [percentages]
         )
@@ -291,10 +296,11 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
       );
       const signature = await authorizer.signMessage(hashedMessage);
       await expect(
-        ownerAssetManager.addERC20Assets(
+        ownerAssetManager.addAssets(
           userId,
           [ERC20.address],
-
+          [0],
+          [0],
           [beneficiaries],
           [percentages]
         )
@@ -341,35 +347,38 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
         )
       );
       const addSignature = await authorizer.signMessage(hashedMessage);
-      await ownerAssetManager.addERC20Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC20.address],
-
+        [0],
+        [0],
         [beneficiaries],
         [percentages]
       );
       const claimHashedMessage = ethers.utils.arrayify(
         ethers.utils.solidityKeccak256(
-          ["address", "address", "address", "uint256"],
-          [owner.address, beneficiary.address, ERC20.address, nonce + 1]
+          ["address", "address", "address", "uint256", "uint256"],
+          [owner.address, beneficiary.address, ERC20.address, 0, nonce + 1]
         )
       );
       const claimSignature = await admin.signMessage(claimHashedMessage);
       await expect(
-        beneficiaryAssetManager.claimERC20Asset(
+        beneficiaryAssetManager.claimAsset(
           userId,
           owner.address,
           ERC20.address,
+          0,
           nonce + 1,
           [claimSignature]
         )
       )
-        .to.emit(beneficiaryAssetManager, "ERC20AssetClaimed")
+        .to.emit(beneficiaryAssetManager, "AssetClaimed")
         .withArgs(
           userId,
           owner.address,
           beneficiary.address,
           ERC20.address,
+          0,
           ethers.utils.parseEther("33"),
           [admin.address]
         );
@@ -404,10 +413,11 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
       const nonce = ethers.BigNumber.from(
         ethers.utils.randomBytes(4)
       ).toString();
-      await ownerAssetManager.addERC20Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC20.address],
-
+        [0],
+        [0],
         [beneficiaries],
         [percentages]
       );
@@ -418,27 +428,29 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
 
       const claimHashedMessage = ethers.utils.arrayify(
         ethers.utils.solidityKeccak256(
-          ["address", "address", "address", "uint256"],
-          [owner.address, beneficiary.address, ERC20.address, nonce + 1]
+          ["address", "address", "address", "uint256", "uint256"],
+          [owner.address, beneficiary.address, ERC20.address, 0, nonce + 1]
         )
       );
       const claimSignature = await admin.signMessage(claimHashedMessage);
 
       await expect(
-        beneficiaryAssetManager.claimERC20Asset(
+        beneficiaryAssetManager.claimAsset(
           userId,
           owner.address,
           ERC20.address,
+          0,
           nonce + 1,
           [claimSignature]
         )
       )
-        .to.emit(beneficiaryAssetManager, "ERC20AssetClaimed")
+        .to.emit(beneficiaryAssetManager, "AssetClaimed")
         .withArgs(
           userId,
           owner.address,
           beneficiary.address,
           ERC20.address,
+          0,
           ethers.utils.parseEther("9.9"),
           [admin.address]
         );
@@ -450,27 +462,29 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
 
       const claimHashedMessage1 = ethers.utils.arrayify(
         ethers.utils.solidityKeccak256(
-          ["address", "address", "address", "uint256"],
-          [owner.address, beneficiary.address, ERC20.address, nonce + 2]
+          ["address", "address", "address", "uint256", "uint256"],
+          [owner.address, beneficiary.address, ERC20.address, 0, nonce + 2]
         )
       );
       const claimSignature1 = await admin.signMessage(claimHashedMessage1);
 
       await expect(
-        beneficiaryAssetManager.claimERC20Asset(
+        beneficiaryAssetManager.claimAsset(
           userId,
           owner.address,
           ERC20.address,
+          0,
           nonce + 2,
           [claimSignature1]
         )
       )
-        .to.emit(beneficiaryAssetManager, "ERC20AssetClaimed")
+        .to.emit(beneficiaryAssetManager, "AssetClaimed")
         .withArgs(
           userId,
           owner.address,
           beneficiary.address,
           ERC20.address,
+          0,
           ethers.utils.parseEther("23.1"),
           [admin.address]
         );
@@ -511,39 +525,42 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
         )
       );
       const addSignature = await authorizer.signMessage(hashedMessage);
-      await ownerAssetManager.addERC20Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC20.address],
-
+        [0],
+        [0],
         [beneficiaries],
         [percentages]
       );
       const claimHashedMessage = ethers.utils.arrayify(
         ethers.utils.solidityKeccak256(
-          ["address", "address", "address", "uint256"],
-          [owner.address, beneficiary.address, ERC20.address, nonce + 1]
+          ["address", "address", "address", "uint256", "uint256"],
+          [owner.address, beneficiary.address, ERC20.address, 0, nonce + 1]
         )
       );
       const claimSignature = await admin.signMessage(claimHashedMessage);
-      await beneficiaryAssetManager.claimERC20Asset(
+      await beneficiaryAssetManager.claimAsset(
         userId,
         owner.address,
         ERC20.address,
+        0,
         nonce + 1,
         [claimSignature]
       );
       const claimHashedMessage1 = ethers.utils.arrayify(
         ethers.utils.solidityKeccak256(
-          ["address", "address", "address", "uint256"],
-          [owner.address, beneficiary.address, ERC20.address, nonce + 2]
+          ["address", "address", "address", "uint256", "uint256"],
+          [owner.address, beneficiary.address, ERC20.address, 0, nonce + 2]
         )
       );
       const claimSignature1 = await admin.signMessage(claimHashedMessage1);
       await expect(
-        beneficiaryAssetManager.claimERC20Asset(
+        beneficiaryAssetManager.claimAsset(
           userId,
           owner.address,
           ERC20.address,
+          0,
           nonce + 2,
           [claimSignature1]
         )
@@ -588,25 +605,27 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
         )
       );
       const addSignature = await authorizer.signMessage(hashedMessage);
-      await ownerAssetManager.addERC20Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC20.address],
-
+        [0],
+        [0],
         [beneficiaries],
         [percentages]
       );
       const claimHashedMessage = ethers.utils.arrayify(
         ethers.utils.solidityKeccak256(
-          ["address", "address", "address", "uint256"],
-          [owner.address, beneficiary.address, ERC20.address, nonce + 1]
+          ["address", "address", "address", "uint256", "uint256"],
+          [owner.address, beneficiary.address, ERC20.address, 0, nonce + 1]
         )
       );
       const claimSignature = await admin.signMessage(claimHashedMessage);
       await expect(
-        beneficiaryAssetManager.claimERC20Asset(
+        beneficiaryAssetManager.claimAsset(
           userId,
           owner.address,
           ERC20.address,
+          0,
           nonce + 1,
           [claimSignature]
         )
@@ -649,17 +668,18 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
         )
       );
       const addSignature = await authorizer.signMessage(hashedMessage);
-      await ownerAssetManager.addERC20Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC20.address],
-
+        [0],
+        [0],
         [beneficiaries],
         [percentages]
       );
       const claimHashedMessage = ethers.utils.arrayify(
         ethers.utils.solidityKeccak256(
-          ["address", "address", "address", "uint256"],
-          [owner.address, beneficiary.address, ERC20.address, nonce + 1]
+          ["address", "address", "address", "uint256", "uint256"],
+          [owner.address, beneficiary.address, ERC20.address, 0, nonce + 1]
         )
       );
       const claimSignature = await admin.signMessage(claimHashedMessage);
@@ -668,10 +688,11 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
         await ownerERC20.balanceOf(owner.address)
       );
       await expect(
-        beneficiaryAssetManager.claimERC20Asset(
+        beneficiaryAssetManager.claimAsset(
           userId,
           owner.address,
           ERC20.address,
+          0,
           nonce + 1,
           [claimSignature]
         )
@@ -718,16 +739,19 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
         )
       );
       const addSignature = await authorizer.signMessage(hashedMessage);
-      await ownerAssetManager.addERC20Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC20.address],
+        [0],
+        [0],
         [beneficiaries],
         [percentages]
       );
       await expect(
-        ownerAssetManager.setERC20BeneficiaryPercentage(
+        ownerAssetManager.setBeneficiaryPercentage(
           userId,
           ERC20.address,
+          0,
           beneficiary.address,
           30
         )
@@ -778,22 +802,24 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
         )
       );
       const addSignature = await authorizer.signMessage(hashedMessage);
-      await ownerAssetManager.addERC20Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC20.address],
-
+        [0],
+        [0],
         [beneficiaries],
         [percentages]
       );
       await expect(
-        ownerAssetManager.setERC20BeneficiaryPercentage(
+        ownerAssetManager.setBeneficiaryPercentage(
           userId,
           ERC20.address,
+          0,
           beneficiary.address,
           34
         )
       ).to.be.revertedWith(
-        "LegacyAssetManager: Beneficiary percentage exceeds 100"
+        "LegacyAssetManager: Beneficiary percentage exceeds total of 100"
       );
     });
     it("Should fail to change the percentages for beneficiary when asset has been claimed", async () => {
@@ -832,32 +858,36 @@ describe("LegacyAssetManager - ERC20 Assets", async function () {
         )
       );
       const addSignature = await authorizer.signMessage(hashedMessage);
-      await ownerAssetManager.addERC20Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC20.address],
+        [0],
+        [0],
         [beneficiaries],
         [percentages]
       );
 
       const claimHashedMessage = ethers.utils.arrayify(
         ethers.utils.solidityKeccak256(
-          ["address", "address", "address", "uint256"],
-          [owner.address, beneficiary.address, ERC20.address, nonce + 1]
+          ["address", "address", "address", "uint256", "uint256"],
+          [owner.address, beneficiary.address, ERC20.address, 0, nonce + 1]
         )
       );
       const claimSignature = await admin.signMessage(claimHashedMessage);
-      await beneficiaryAssetManager.claimERC20Asset(
+      await beneficiaryAssetManager.claimAsset(
         userId,
         owner.address,
         ERC20.address,
+        0,
         nonce + 1,
         [claimSignature]
       );
 
       await expect(
-        ownerAssetManager.setERC20BeneficiaryPercentage(
+        ownerAssetManager.setBeneficiaryPercentage(
           userId,
           ERC20.address,
+          0,
           beneficiary.address,
           30
         )

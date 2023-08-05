@@ -131,7 +131,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
       } = await deploy();
       const userId = ethers.utils.hashMessage(owner.address);
       await expect(
-        ownerAssetManager.addERC1155Assets(
+        ownerAssetManager.addAssets(
           userId,
           [ERC1155.address],
           [1],
@@ -140,7 +140,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
           [[100]]
         )
       )
-        .to.emit(ownerAssetManager, "ERC1155AssetAdded")
+        .to.emit(ownerAssetManager, "AssetAdded")
         .withArgs(
           userId,
           owner.address,
@@ -161,7 +161,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         beneficiary,
       } = await deploy();
       const userId = ethers.utils.hashMessage(owner.address);
-      await ownerAssetManager.addERC1155Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC1155.address],
         [1],
@@ -170,7 +170,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         [[100]]
       );
       await expect(
-        ownerAssetManager.addERC1155Assets(
+        ownerAssetManager.addAssets(
           userId,
           [ERC1155.address],
           [1],
@@ -192,7 +192,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
       } = await deploy();
       const userId = ethers.utils.hashMessage(owner.address);
       await expect(
-        ownerAssetManager.addERC1155Assets(
+        ownerAssetManager.addAssets(
           userId,
           [ERC1155.address],
           [1],
@@ -217,7 +217,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
       await ownerERC1155.setApprovalForAll(ownerVaultAddress, false);
       const userId = ethers.utils.hashMessage(owner.address);
       await expect(
-        ownerAssetManager.addERC1155Assets(
+        ownerAssetManager.addAssets(
           userId,
           [ERC1155.address],
           [1],
@@ -245,7 +245,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         ethers.utils.randomBytes(4)
       ).toString();
 
-      await ownerAssetManager.addERC1155Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC1155.address],
         [1],
@@ -262,7 +262,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
       const claimSignature = await admin.signMessage(claimHashedMessage);
 
       await expect(
-        beneficiaryAssetManager.claimERC1155Asset(
+        beneficiaryAssetManager.claimAsset(
           userId,
           owner.address,
           ERC1155.address,
@@ -271,7 +271,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
           [claimSignature]
         )
       )
-        .to.emit(beneficiaryAssetManager, "ERC1155AssetClaimed") // transfer from minter to redeemer
+        .to.emit(beneficiaryAssetManager, "AssetClaimed") // transfer from minter to redeemer
         .withArgs(
           userId,
           owner.address,
@@ -299,7 +299,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         ethers.utils.randomBytes(4)
       ).toString();
 
-      await ownerAssetManager.addERC1155Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC1155.address],
         [5],
@@ -322,7 +322,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
       );
       const claimSignature = await admin.signMessage(claimHashedMessage);
       await expect(
-        beneficiaryAssetManager.claimERC1155Asset(
+        beneficiaryAssetManager.claimAsset(
           userId,
           owner.address,
           ERC1155.address,
@@ -331,7 +331,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
           [claimSignature]
         )
       )
-        .to.emit(beneficiaryAssetManager, "ERC1155AssetClaimed")
+        .to.emit(beneficiaryAssetManager, "AssetClaimed")
         .withArgs(
           userId,
           owner.address,
@@ -357,7 +357,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
       );
       const claimSignature1 = await admin.signMessage(claimHashedMessage1);
       await expect(
-        beneficiaryAssetManager.claimERC1155Asset(
+        beneficiaryAssetManager.claimAsset(
           userId,
           owner.address,
           ERC1155.address,
@@ -366,7 +366,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
           [claimSignature1]
         )
       )
-        .to.emit(beneficiaryAssetManager, "ERC1155AssetClaimed")
+        .to.emit(beneficiaryAssetManager, "AssetClaimed")
         .withArgs(
           userId,
           owner.address,
@@ -392,7 +392,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         ethers.utils.randomBytes(4)
       ).toString();
 
-      await ownerAssetManager.addERC1155Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC1155.address],
         [1],
@@ -408,7 +408,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
       );
       const claimSignature = await owner.signMessage(claimHashedMessage);
       await expect(
-        beneficiaryAssetManager.claimERC1155Asset(
+        beneficiaryAssetManager.claimAsset(
           userId,
           owner.address,
           ERC1155.address,
@@ -433,7 +433,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         ethers.utils.randomBytes(4)
       ).toString();
 
-      await ownerAssetManager.addERC1155Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC1155.address],
         [1],
@@ -449,7 +449,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
       );
       const claimSignature = await admin.signMessage(claimHashedMessage);
       await expect(
-        beneficiaryAssetManager.claimERC1155Asset(
+        beneficiaryAssetManager.claimAsset(
           userId,
           owner.address,
           ERC1155.address,
@@ -474,7 +474,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         ethers.utils.randomBytes(4)
       ).toString();
 
-      await ownerAssetManager.addERC1155Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC1155.address],
         [2],
@@ -489,7 +489,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         )
       );
       const claimSignature = await admin.signMessage(claimHashedMessage);
-      await beneficiaryAssetManager.claimERC1155Asset(
+      await beneficiaryAssetManager.claimAsset(
         userId,
         owner.address,
         ERC1155.address,
@@ -505,7 +505,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
       );
       const claimSignature1 = await admin.signMessage(claimHashedMessage1);
       await expect(
-        beneficiaryAssetManager.claimERC1155Asset(
+        beneficiaryAssetManager.claimAsset(
           userId,
           owner.address,
           ERC1155.address,
@@ -534,7 +534,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         ethers.utils.randomBytes(4)
       ).toString();
 
-      await ownerAssetManager.addERC1155Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC1155.address],
         [1],
@@ -557,7 +557,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         "0x01"
       );
       await expect(
-        beneficiaryAssetManager.claimERC1155Asset(
+        beneficiaryAssetManager.claimAsset(
           userId,
           owner.address,
           ERC1155.address,
@@ -586,7 +586,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         ethers.utils.randomBytes(4)
       ).toString();
 
-      await ownerAssetManager.addERC1155Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC1155.address],
         [1],
@@ -610,7 +610,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         "0x01"
       );
       await expect(
-        beneficiaryAssetManager.claimERC1155Asset(
+        beneficiaryAssetManager.claimAsset(
           userId,
           owner.address,
           ERC1155.address,
@@ -639,7 +639,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         ethers.utils.randomBytes(4)
       ).toString();
 
-      await ownerAssetManager.addERC1155Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC1155.address],
         [1],
@@ -648,9 +648,9 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         [[100]]
       );
       await expect(
-        ownerAssetManager.removeERC1155Asset(userId, ERC1155.address, 1)
+        ownerAssetManager.removeAsset(userId, ERC1155.address, 1)
       )
-        .to.emit(ownerAssetManager, "ERC1155AssetRemoved")
+        .to.emit(ownerAssetManager, "AssetRemoved")
         .withArgs(userId, owner.address, ERC1155.address, 1);
     });
     it("Should fail to remove single ERC1155 Asset when the beneficiaries have already claimed the asset", async function () {
@@ -668,7 +668,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         ethers.utils.randomBytes(4)
       ).toString();
 
-      await ownerAssetManager.addERC1155Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC1155.address],
         [1],
@@ -685,7 +685,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
       );
       const claimSignature = await admin.signMessage(claimHashedMessage);
 
-      await beneficiaryAssetManager.claimERC1155Asset(
+      await beneficiaryAssetManager.claimAsset(
         userId,
         owner.address,
         ERC1155.address,
@@ -695,7 +695,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
       );
 
       await expect(
-        ownerAssetManager.removeERC1155Asset(userId, ERC1155.address, 1)
+        ownerAssetManager.removeAsset(userId, ERC1155.address, 1)
       ).to.be.revertedWith(
         "LegacyAssetManager: Asset has been transferred to the beneficiaries"
       );
@@ -715,7 +715,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         ethers.utils.randomBytes(4)
       ).toString();
 
-      await ownerAssetManager.addERC1155Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC1155.address],
         [1],
@@ -725,8 +725,8 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
       );
 
       await expect(
-        ownerAssetManager.removeERC1155Asset(userId, ERC1155.address, 2)
-      ).to.be.revertedWith("LegacyAssetManager: Asset not found");
+        ownerAssetManager.removeAsset(userId, ERC1155.address, 2)
+      ).to.be.revertedWith("LegacyAssetManager: Asset not listed");
     });
   });
 
@@ -742,7 +742,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         beneficiary1,
       } = await deploy();
       const userId = ethers.utils.hashMessage(owner.address);
-      await ownerAssetManager.addERC1155Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC1155.address],
         [1],
@@ -751,7 +751,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         [[100]]
       );
       await expect(
-        ownerAssetManager.setERC1155BeneficiaryPercentage(
+        ownerAssetManager.setBeneficiaryPercentage(
           userId,
           ERC1155.address,
           1,
@@ -780,7 +780,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         beneficiary1,
       } = await deploy();
       const userId = ethers.utils.hashMessage(owner.address);
-      await ownerAssetManager.addERC1155Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC1155.address],
         [1],
@@ -789,7 +789,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         [[100]]
       );
       await expect(
-        ownerAssetManager.setERC1155BeneficiaryPercentage(
+        ownerAssetManager.setBeneficiaryPercentage(
           userId,
           ERC1155.address,
           1,
@@ -811,7 +811,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         beneficiary1,
       } = await deploy();
       const userId = ethers.utils.hashMessage(owner.address);
-      await ownerAssetManager.addERC1155Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC1155.address],
         [1],
@@ -820,7 +820,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
         [[100]]
       );
       await expect(
-        ownerAssetManager.setERC1155BeneficiaryPercentage(
+        ownerAssetManager.setBeneficiaryPercentage(
           userId,
           ERC1155.address,
           2,
@@ -843,7 +843,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
       const nonce = ethers.BigNumber.from(
         ethers.utils.randomBytes(4)
       ).toString();
-      await ownerAssetManager.addERC1155Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC1155.address],
         [1],
@@ -860,7 +860,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
       );
       const claimSignature = await admin.signMessage(claimHashedMessage);
 
-      await beneficiaryAssetManager.claimERC1155Asset(
+      await beneficiaryAssetManager.claimAsset(
         userId,
         owner.address,
         ERC1155.address,
@@ -870,7 +870,7 @@ describe("LegacyAssetManager - ERC1155 Assets", async function () {
       );
 
       await expect(
-        ownerAssetManager.setERC1155BeneficiaryPercentage(
+        ownerAssetManager.setBeneficiaryPercentage(
           userId,
           ERC1155.address,
           1,

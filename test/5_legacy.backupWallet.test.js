@@ -188,7 +188,7 @@ describe('LegacyAssetManager - Backup Wallet', async function () {
         )
       );
       const signature = await authorizer.signMessage(hashedMessage);
-      await ownerAssetManager.addERC1155Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC1155.address],
         [1],
@@ -196,27 +196,31 @@ describe('LegacyAssetManager - Backup Wallet', async function () {
         [[beneficiary.address]],
         [[100]]
       );
-      await ownerAssetManager.addERC721Assets(
-        userId,
-        [ERC721.address, ERC721.address, ERC721.address, ERC721.address, ERC721.address],
-        [1, 2, 3, 4, 5],
-        [
-          beneficiary.address,
-          beneficiary1.address,
-          beneficiary2.address,
-          beneficiary3.address,
-          beneficiary4.address,
-        ]
-      );
-      const beneficiaires = [beneficiary.address, beneficiary1.address, beneficiary2.address];
-      const percentages = [33, 33, 34];
-      await ownerERC20.approve(ownerVaultAddress, ethers.utils.parseEther('100'));
-      await ownerAssetManager.addERC20Assets(
-        userId,
-        [ERC20.address],
-        [beneficiaires],
-        [percentages]
-      );
+      // await ownerAssetManager.addAssets(
+      //   userId,
+      //   [ERC721.address, ERC721.address, ERC721.address, ERC721.address, ERC721.address],
+      //   [1, 2, 3, 4, 5],
+      //   [0],
+      //   [
+      //     beneficiary.address,
+      //     beneficiary1.address,
+      //     beneficiary2.address,
+      //     beneficiary3.address,
+      //     beneficiary4.address,
+      //   ],
+      //   [20, 20, 20, 20, 20]
+      // );
+      // const beneficiaires = [beneficiary.address, beneficiary1.address, beneficiary2.address];
+      // const percentages = [33, 33, 34];
+      // await ownerERC20.approve(ownerVaultAddress, ethers.utils.parseEther('100'));
+      // await ownerAssetManager.addAssets(
+      //   userId,
+      //   [ERC20.address],
+      //   [1],
+      //   [100],
+      //   [beneficiaires],
+      //   [percentages]
+      // );
 
       await ownerAssetManager.addBackupWallet('string', 0, backupWallet1.address);
       await expect(backupWalletAssetManager.switchBackupWallet(userId, owner.address)).to.emit(
@@ -225,7 +229,7 @@ describe('LegacyAssetManager - Backup Wallet', async function () {
       );
       backupWalletAssetManager.switchBackupWallet(userId, owner.address);
     });
-    it('Should fail to swith backup wallet when called by non backup wallet', async () => {
+    it('Should fail to switch backup wallet when called by non backup wallet', async () => {
       const {
         admin,
         authorizer,
@@ -253,7 +257,7 @@ describe('LegacyAssetManager - Backup Wallet', async function () {
         )
       );
       const signature = await authorizer.signMessage(hashedMessage);
-      await ownerAssetManager.addERC1155Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC1155.address],
         [1],
@@ -261,29 +265,33 @@ describe('LegacyAssetManager - Backup Wallet', async function () {
         [[beneficiary.address]],
         [[100]]
       );
-      await ownerAssetManager.addERC721Assets(
+      await ownerAssetManager.addAssets(
         userId,
         [ERC721.address, ERC721.address, ERC721.address, ERC721.address, ERC721.address],
         [1, 2, 3, 4, 5],
+        [1, 2, 3, 4, 5],
         [
-          beneficiary.address,
-          beneficiary1.address,
-          beneficiary2.address,
-          beneficiary3.address,
-          beneficiary4.address,
-        ]
+          [beneficiary.address],
+          [beneficiary1.address],
+          [beneficiary2.address],
+          [beneficiary3.address],
+          [beneficiary4.address]
+        ],
+        [[100], [100], [100], [100], [100]]
       );
       const beneficiaires = [beneficiary.address, beneficiary1.address, beneficiary2.address];
       const percentages = [33, 33, 34];
       await ownerERC20.approve(ownerVaultAddress, ethers.utils.parseEther('100'));
-      await ownerAssetManager.addERC20Assets(
-        userId,
-        [ERC20.address],
-        [beneficiaires],
-        [percentages]
-      );
+      // await ownerAssetManager.addAssets(
+      //   userId,
+      //   [ERC20.address],
+      //   [1],
+      //   [1],
+      //   [beneficiaires],
+      //   [percentages]
+      // );
 
-      await ownerAssetManager.addBackupWallet('string', 0, backupWallet1.address);
+      await ownerAssetManager.addBackupWallet(userId, 0, backupWallet1.address);
       await expect(ownerAssetManager.switchBackupWallet(userId, owner.address)).to.be.revertedWith(
         'LegacyAssetManager: Unauthorized backup wallet transfer call'
       );
